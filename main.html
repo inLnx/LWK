@@ -376,8 +376,8 @@
             });
         }
 
+
         function displayAllPosts(posts) {
-            // Clear current posts display, keeping the header
             postsContainerEl.innerHTML = `
                 <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Nearby Waves</h2>
             `;
@@ -385,7 +385,6 @@
             let displayedPosts = [];
 
             if (userLocation.latitude && userLocation.longitude) {
-                // Calculate distance for each post and filter by radius
                 const postsWithDistance = posts.map(post => {
                     if (post.latitude && post.longitude) {
                         const dist = calculateDistance(userLocation.latitude, userLocation.longitude, post.latitude, post.longitude);
@@ -394,11 +393,9 @@
                     return { ...post, distance: Infinity }; // Posts without location are considered infinitely far
                 });
 
-                // Filter posts within the defined radius and sort by distance (closest first)
                 displayedPosts = postsWithDistance.filter(post => post.distance <= PROXIMITY_RADIUS_KM)
                                                   .sort((a, b) => a.distance - b.distance);
             } else {
-                // If user's location is not available, show all posts (no proximity filtering)
                 displayedPosts = posts;
             }
 
@@ -419,7 +416,6 @@
             const postHeader = document.createElement('div');
             postHeader.className = 'flex items-center mb-3';
 
-            // User icon/avatar (first letter of username)
             const userIcon = document.createElement('div');
             userIcon.className = 'w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-lg mr-4 shadow-sm';
             userIcon.textContent = post.username ? post.username.charAt(0).toUpperCase() : 'A';
