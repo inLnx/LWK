@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>  
+<title>
+  LWK - Sign Up
+</title>
+</head>
+    <body>
+    <style>
+     body {
+     background-color: beige;
+     font-family: Arial, Helvetica, sans-serif;
+     text-align: center;
+     margin: 70px;
+    }
+     
+    
+    </style>
+   
+   <h1>Sign Up</h1>
+   <form name="account">
+        <label for="username">
+        Username
+        </label>
+        <br>
+        <input type="text" id="username"
+        name="username">
+        <br>
+        <br>
+        <label for="password">
+        Password
+        </label>
+        
+        <br>        
+        <input type="text" id="password"
+        name="password">
+        <br>
+        <br>
+        <input type="submit" id="go" 
+        name="Submit">
+        </form>
+        <script>
+            function validateForm() {
+  let x = document.forms["account"]["password"].value;
+  if (x == "") {
+    alert("Cannot be empty");
+    return false;
+  }
+}
+            </script>
+        </body>
+
+</html>
