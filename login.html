@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>  
+<title>
+  LWK - Login
+</title>
+   <script type="text/javascript" src="parse.js"></script>
+
+</head>
+<body>
+      <style>
+     body {
+     background-color: rgb(211, 238, 225);
+     font-family: Arial, Helvetica, sans-serif;
+     text-align: center;
+     margin: 70px;
+     border-radius: 13%;
+    }
+     button{
+     border-radius: 34px;
+     border: 2px;
+     border-style: solid;
+     }
+    
+    </style>
+   <h1>Login</h1>
+
+    <form name="loginForm" onsubmit="event.preventDefault(); accountLogin();">
+        <label for="loginUsername">Username</label>
+        <br>
+        <input type="text" id="loginUsername" name="loginUsername">
+        <br><br>
+
+        <label for="loginPassword">Password</label>
+        <br>        
+        <input type="text" id="loginPassword" name="loginPassword">
+        <br><br>
+
+        <input type="submit" id="loginBtn" value="Login">
+    </form>
+
+    <script>
+
+            
+        async function accountLogin(){
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            if (!username || !password) {
+                alert("Both username and password are required for login!");
+                return; 
+            }
+
+            try {
+                const user = await Parse.User.logIn(username, password);
+                alert("Welcome back, " + user.get("username") + "! You are now logged in.");
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+
+                console.log("Logged in user:", user);
+ 
+            } catch (error) {
+                alert("Login Error: " + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
+
+
