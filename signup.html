@@ -6,19 +6,40 @@
 </title>
 </head>
     <body>
+        <script>
+            // Before you say that this is bad code
+            // Remember that this is required and you cant 
+            // run PHP in a local file.
+        const Parse = require('parse/node');
+            Parse.initialize('lOBQbrW6iEmGqO2PEscnVC5TfudBeG7EeUCwuMJR', '37LpjkN2RDwaYiY3G0z6KEJY5hsUSxnlrrg7Ou6f');
+        Parse.serverURL = 'https://parseapi.back4app.com/';
+</script>
     <style>
      body {
      background-color: rgb(211, 238, 225);
      font-family: Arial, Helvetica, sans-serif;
      text-align: center;
      margin: 70px;
+     border-radius: 13%;
     }
-     
+     button{
+     border-radius: 34px;
+     border: 2px;
+
+     }
     
     </style>
    
    <h1>Sign Up</h1>
-   <form name="account">
+
+        <form name="account">
+        <label for="fname">
+        First Name
+        </label>
+        <br>
+        <input take="text" id="username"
+         name="username"> 
+         <br><br>
         <label for="username">
         Username
         </label>
@@ -38,6 +59,7 @@
         <br>
         <input type="submit" id="go" 
         name="Submit">
+        
         </form>
         <script>
 
