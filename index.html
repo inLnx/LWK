@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lwk</title>
+    </head>
+<body>
+    <button id="login" onclick="openSite('start.html')"> </button>
+    <h1>LWK</h1>
+    <p>all around you.</p>
+    <style>
+        body {
+        background-color: rgb(117, 59, 59);
+        font-family: Arial, Helvetica, sans-serif;
+        
+        }
+        
+        button{
+        border-radius: 3px;
+        border: 2px;
+        background-color: azure;
+        } 
+        </style>
+   <script>
+    document.getElementById("login").innerHTML = "Sign up";
+function openSite(url, target = '_blank', windowFeatures = '') {
+windows.open (url, target, windowFeatures);
+}
+
+    </script>
+
+
+</body>
+    </html>
