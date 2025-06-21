@@ -1,472 +1,464 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>LWK - Local Wave</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Tailwind CSS for styling -->
+    <title>Local Social Feed</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Parse JavaScript SDK from unpkg -->
-    <script type="text/javascript" src="https://unpkg.com/parse/dist/parse.min.js"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Custom font for a clean look */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: rgb(211, 238, 225); /* Matches user's background color */
-            margin: 0;
-            padding: 0;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            padding: 24px;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            color: #333;
+            gap: 20px;
         }
-        /* Style for the main container to center it and add padding */
-        #app {
+        .post-input-section, .post-feed-section {
+            padding: 16px;
+            background-color: #f9fafb;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+        .post-card {
             background-color: #ffffff;
-            border-radius: 13px; /* Rounded corners for the app container */
-            padding: 1.5rem;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-            margin: 2rem auto; /* Center the app and provide vertical margin */
-            max-width: 90%; /* Max width for responsiveness */
-            width: 600px; /* Desired width on larger screens */
-        }
-        /* Specific styles for buttons */
-        button {
-            border-radius: 34px; /* Matches user's button style */
-            border: 2px solid transparent; /* Ensure border is transparent unless hovered/focused */
-        }
-        /* Modal backdrop styles */
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(5px);
-        }
-        /* Post item styling */
-        .post-item {
             border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
         }
-        /* Spinner for loading indicator */
-        .spinner-border {
-            border-top-color: transparent;
+        .post-card:last-child {
+            margin-bottom: 0;
+        }
+        .post-text {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #374151;
+            margin-bottom: 8px;
+            word-wrap: break-word; /* Ensures long words break and wrap */
+        }
+        .post-meta {
+            font-size: 0.8rem;
+            color: #6b7280;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap; /* Allows meta info to wrap on small screens */
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            text-align: center;
+            display: none; /* Hidden by default */
+            font-family: 'Inter', sans-serif;
+            max-width: 90%;
+        }
+        .message-box button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 1rem;
+        }
+        .message-box button:hover {
+            background-color: #45a049;
+        }
+        .message-box.show {
+            display: block;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+            display: none; /* Hidden by default */
+        }
+        .loading-spinner.show {
+            display: block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            .post-input-section, .post-feed-section {
+                padding: 12px;
+            }
+            .post-card {
+                padding: 12px;
+            }
+            .post-text {
+                font-size: 0.95rem;
+            }
+            .post-meta {
+                font-size: 0.75rem;
+            }
         }
     </style>
 </head>
-<body>
-    <div id="app" class="relative">
-        <!-- Application Title -->
-        <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-8 tracking-tight">Local Wave 🌊</h1>
-
-        <!-- Geolocation Status -->
-        <div id="location-status" class="text-center text-gray-600 text-sm mb-6 p-2 bg-blue-50 rounded-lg shadow-sm">
-            Attempting to get your location...
+<body class="flex items-center justify-center">
+    <div class="container">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold text-gray-800 text-center flex-grow">Local Buzz</h1>
         </div>
 
-        <!-- Post Creation Form -->
-        <div class="mb-10 p-5 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Share Your Wave</h2>
-            <textarea id="post-content"
-                      class="w-full p-4 border border-blue-200 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition duration-200 ease-in-out text-base text-gray-700 placeholder-gray-400 shadow-sm"
-                      rows="5"
-                      placeholder="What's happening in your neighborhood? Share a local update!"></textarea>
-            <button id="post-button"
-                    class="w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold py-3 px-6 rounded-3xl hover:from-blue-700 hover:to-indigo-800 transition duration-300 ease-in-out shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                Post Your Wave
+
+        <!-- User Info Section -->
+        <div class="user-info text-center text-sm text-gray-600 mb-4">
+            <p>Your User ID: <span id="user-id-display" class="font-semibold text-gray-700">Loading...</span></p>
+        </div>
+
+        <!-- Create Post Section -->
+        <div class="post-input-section">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Create a New Post</h2>
+            <textarea id="post-content" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-y" placeholder="What's happening in your neighborhood?"></textarea>
+            <button id="post-button" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105 shadow-md">
+                Post
             </button>
+            <div id="location-loading-spinner" class="loading-spinner mt-4"></div>
+            <p id="location-status" class="text-sm text-gray-500 text-center mt-2">Getting your location...</p>
         </div>
 
-        <!-- Posts Display Area -->
-        <div id="posts-container" class="space-y-6">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Nearby Waves</h2>
-            <!-- Posts will be dynamically loaded here -->
-            <div id="loading-posts" class="text-center text-gray-500 hidden">
-                <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-blue-500 border-r-transparent" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2">Loading nearby posts...</p>
-            </div>
-            <div id="no-posts-message" class="text-center text-gray-500 text-md p-4 bg-gray-50 rounded-lg shadow-sm hidden">
-                No waves found nearby. Be the first to share something amazing!
+        <!-- Post Feed Section -->
+        <div class="post-feed-section">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Local Posts (within 500m)</h2>
+            <div id="posts-container">
+                <!-- Posts will be loaded here -->
+                <p id="no-posts-message" class="text-gray-500 text-center">No posts found nearby. Be the first to post!</p>
             </div>
         </div>
     </div>
 
-    <!-- Custom Message Box/Modal -->
-    <div id="message-modal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-xl p-8 shadow-2xl max-w-sm w-full text-center transform scale-95 transition-transform duration-300">
-            <h3 id="modal-title" class="text-2xl font-bold text-gray-900 mb-4"></h3>
-            <p id="modal-message" class="text-gray-700 text-lg mb-8"></p>
-            <button id="modal-close-button" class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold py-3 px-6 rounded-3xl hover:from-blue-700 hover:to-indigo-800 transition duration-300 shadow-md">
-                Got it!
-            </button>
-        </div>
+    <!-- Custom Message Box -->
+    <div id="messageBox" class="message-box">
+        <p id="messageBoxContent"></p>
+        <button onclick="document.getElementById('messageBox').classList.remove('show');">OK</button>
     </div>
 
-    <script type="text/javascript">
-        // Global variables for Parse instances and user data
-        let userId = ''; // Stores the authenticated user's ID
-        let userName = 'Anonymous'; // Default username, could be fetched from a user profile
-        let userLocation = { latitude: null, longitude: null }; // Stores user's current geographic location
-        let isAuthReady = false; // Flag to indicate Parse authentication state is known
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Parse LiveQuery related variables
-        let liveQueryClient;
-        let querySubscription;
+        // Firebase configuration (provided by the environment or replaced locally)
+        // !!! IMPORTANT: If running locally, make sure your Firebase project's anonymous auth
+        // is enabled and Firestore rules allow read/write for 'artifacts/{your_app_id}/public/data/posts'
+        // where {your_app_id} will be 'default-app-id' if running outside Canvas.
+        const firebaseConfig = typeof __firebase_config !== 'undefined'
+            ? JSON.parse(__firebase_config)
+            : {
+                apiKey: "AIzaSyAE37qdlDBYSUhumSO6jTA985V81DN9iA8", // YOUR_API_KEY
+                authDomain: "lowk-be8e0.firebaseapp.com", // YOUR_AUTH_DOMAIN
+                projectId: "lowk-be8e0", // YOUR_PROJECT_ID
+                storageBucket: "lowk-be8e0.firebasestorage.app", // YOUR_STORAGE_BUCKET
+                messagingSenderId: "244867743683", // YOUR_MESSAGING_SENDER_ID
+                appId: "1:244867743683:web:1b11ac7b94462ef5314776" // YOUR_APP_ID
+              };
 
-        const LOCATION_FETCH_TIMEOUT = 15000; // 15 seconds timeout for geolocation
-        const PROXIMITY_RADIUS_KM = 50; // Filter posts within this radius (in kilometers)
+        // For local testing, 'appId' will be 'default-app-id'. In Canvas, it's provided.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // UI element references
-        const locationStatusEl = document.getElementById('location-status');
-        const postContentEl = document.getElementById('post-content');
-        const postButtonEl = document.getElementById('post-button');
-        const postsContainerEl = document.getElementById('posts-container');
-        const loadingPostsEl = document.getElementById('loading-posts');
-        const noPostsMessageEl = document.getElementById('no-posts-message');
-        const messageModalEl = document.getElementById('message-modal');
-        const modalTitleEl = document.getElementById('modal-title');
-        const modalMessageEl = document.getElementById('modal-message');
-        const modalCloseButtonEl = document.getElementById('modal-close-button');
-
-        /**
-         * @brief Displays a custom modal message to the user instead of `alert()`.
-         * @param {string} title The title of the message.
-         * @param {string} message The content of the message.
-         */
-        function showMessage(title, message) {
-            modalTitleEl.textContent = title;
-            modalMessageEl.textContent = message;
-            messageModalEl.classList.remove('hidden');
-            messageModalEl.classList.add('flex'); // Ensure flexbox for centering
+        // Log a warning if the Canvas-provided config is not found (i.e., running locally)
+        if (typeof __firebase_config === 'undefined') {
+            console.warn(`Local run detected. Using provided firebaseConfig. Ensure 'Anonymous' auth is enabled in Firebase and Firestore rules allow read/write for 'artifacts/${appId}/public/data/posts'.`);
         }
 
-        /**
-         * @brief Hides the custom modal message.
-         */
-        modalCloseButtonEl.addEventListener('click', () => {
-            messageModalEl.classList.add('hidden');
-            messageModalEl.classList.remove('flex');
-        });
+        // Initialize Firebase variables
+        let app;
+        let db;
+        let auth;
+        let currentUserId = null;
+        let userLocation = null; // Stores { latitude, longitude } of the current user
 
+        // Get references to HTML elements
+        const postContentInput = document.getElementById('post-content');
+        const postButton = document.getElementById('post-button');
+        const postsContainer = document.getElementById('posts-container');
+        const noPostsMessage = document.getElementById('no-posts-message');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const locationStatus = document.getElementById('location-status');
+        const locationLoadingSpinner = document.getElementById('location-loading-spinner');
+        const messageBox = document.getElementById('messageBox');
+        const messageBoxContent = document.getElementById('messageBoxContent');
+
+
+        // Function to show a custom message box instead of alert()
+        function showMessageBox(message) {
+            messageBoxContent.textContent = message;
+            messageBox.classList.add('show');
+        }
+
+        // Haversine formula to calculate distance between two lat/lon points in meters
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Radius of Earth in kilometers
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const R = 6371e3; // Earth's radius in metres
+            const φ1 = lat1 * Math.PI / 180; // latitude in radians
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180; // delta latitude in radians
+            const Δλ = (lon2 - lon1) * Math.PI / 180; // delta longitude in radians
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const distance = R * c; 
+
+            const distance = R * c; // distance in metres
             return distance;
         }
 
-       
-        async function initializeParse() {
-            try {
-                Parse.initialize('lOBQbrW6iEmGqO2PEscnVC5TfudBeG7EeUCwuMJR', '37LpjkN2RDwaYiY3G0z6KEJY5hsUSxnlrrg7Ou6f');
-                Parse.serverURL = 'https://parseapi.back4app.com/';
-
-                let currentUser = await Parse.User.current();
-
-                if (!currentUser) {
-                    currentUser = await Parse.User.logInAnonymously();
-                    console.log("Logged in anonymously. User ID:", currentUser.id);
-                } else {
-                    console.log("Existing user logged in. User ID:", currentUser.id);
-                }
-
-                userId = currentUser.id;
-                userName = currentUser.get('username') || currentUser.get('fname') || 'Anonymous User';
-
-                locationStatusEl.textContent = `Location ready. Signed in as: ${userName} (ID: ${userId})`;
-                isAuthReady = true; 
-
-                liveQueryClient = new Parse.LiveQueryClient({
-                    applicationId: 'lOBQbrW6iEmGqO2PEscnVC5TfudBeG7EeUCwuMJR',
-                    serverURL: 'wss://parseapi.back4app.com/', 
-                    javaScriptKey: '37LpjkN2RDwaYiY3G0z6KEJY5hsUSxnlrrg7Ou6f'
-                });
-
-                liveQueryClient.open();
-
-                liveQueryClient.on('open', () => console.log('Parse LiveQuery Client connected.'));
-                liveQueryClient.on('close', () => console.log('Parse LiveQuery Client closed.'));
-                liveQueryClient.on('error', (error) => console.error('Parse LiveQuery Client error:', error));
-
-                loadPosts();
-
-            } catch (error) {
-                showMessage('Parse Init Error', 'Failed to initialize Parse or authenticate: ' + error.message);
-                console.error('Parse initialization error:', error);
-            }
-        }
-
-        
+        // Get user's current location using Geolocation API
         function getUserLocation() {
-            locationStatusEl.textContent = 'Attempting to get your location... (Please allow location access)';
-            postButtonEl.disabled = true; 
-            const options = {
-                enableHighAccuracy: true, 
-                timeout: LOCATION_FETCH_TIMEOUT, 
-                maximumAge: 0
-            };
-
-            const success = (position) => {
-                userLocation.latitude = position.coords.latitude;
-                userLocation.longitude = position.coords.longitude;
-                locationStatusEl.textContent = `Your Location: Lat ${userLocation.latitude.toFixed(4)}, Lon ${userLocation.longitude.toFixed(4)}`;
-                postButtonEl.disabled = false;
-                console.log('User location obtained:', userLocation);
-                if (isAuthReady) {
-                    loadPosts(); 
-                }
-            };
-
-            const error = (err) => {
-                let errorMessage = 'Failed to retrieve your precise location. ';
-                if (err.code === err.PERMISSION_DENIED) {
-                    errorMessage += 'Location access was denied. Posts will not be filtered by proximity to you.';
-                } else if (err.code === err.TIMEOUT) {
-                    errorMessage += 'Location request timed out. Please refresh or try again.';
+            return new Promise((resolve, reject) => {
+                locationLoadingSpinner.classList.add('show');
+                locationStatus.textContent = 'Getting your location...';
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            userLocation = {
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude
+                            };
+                            locationLoadingSpinner.classList.remove('show');
+                            locationStatus.textContent = `Location: ${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`;
+                            resolve(userLocation);
+                        },
+                        (error) => {
+                            locationLoadingSpinner.classList.remove('show');
+                            let errorMessage = 'Unable to retrieve your location.';
+                            switch(error.code) {
+                                case error.PERMISSION_DENIED:
+                                    errorMessage = "Location access denied. Please allow location access in your browser settings.";
+                                    break;
+                                case error.POSITION_UNAVAILABLE:
+                                    errorMessage = "Location information is unavailable. Try again later.";
+                                    break;
+                                case error.TIMEOUT:
+                                    errorMessage = "Request to get user location timed out. Check your network or GPS.";
+                                    break;
+                                default:
+                                    errorMessage = `An unknown error occurred: ${error.message}`;
+                                    break;
+                            }
+                            locationStatus.textContent = errorMessage;
+                            console.error("Geolocation Error:", error);
+                            showMessageBox(errorMessage);
+                            reject(new Error(errorMessage));
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Options for geolocation
+                    );
                 } else {
-                    errorMessage += `Error code: ${err.code}.`;
+                    const errorMessage = "Geolocation is not supported by your browser. Please use a modern browser.";
+                    locationLoadingSpinner.classList.remove('show');
+                    locationStatus.textContent = errorMessage;
+                    showMessageBox(errorMessage);
+                    reject(new Error(errorMessage));
                 }
-                locationStatusEl.textContent = errorMessage;
-                showMessage('Location Unavailable', errorMessage + ' You can still post, but posts will not be filtered by proximity until location is available.');
-                console.error('Geolocation error:', err);
-                postButtonEl.disabled = false; 
-                if (isAuthReady) {
-                    loadPosts(); 
-                }
-            };
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(success, error, options);
-            } else {
-                locationStatusEl.textContent = 'Geolocation is not supported by your browser.';
-                showMessage('Browser Issue', 'Your browser does not support geolocation. Posts cannot be filtered by proximity.');
-                console.error('Geolocation is not supported.');
-                postButtonEl.disabled = false;
-                if (isAuthReady) {
-                    loadPosts();
-                }
-            }
-        }
-
-
-        async function createPost() {
-            const content = postContentEl.value.trim();
-
-            if (!content) {
-                showMessage('Input Required', 'Please write something before posting!');
-                return;
-            }
-
-            if (!Parse.User.current()) {
-                showMessage('Authentication Required', 'Please ensure you are logged in or an anonymous user session is established before posting.');
-                console.error('No Parse user is authenticated to create a post.');
-                return;
-            }
-
-            
-            if (!userLocation.latitude || !userLocation.longitude) {
-                showMessage('Location Missing', 'Your location is not available. Your post will not have location data. You can still post, but it won\'t appear in location-based searches.');
-            }
-
-            postButtonEl.disabled = true;
-            postButtonEl.textContent = 'Sharing Wave...';
-            postButtonEl.classList.add('opacity-75', 'cursor-not-allowed');
-
-            try {
-                const Post = Parse.Object.extend("Post");
-                const newPost = new Post();
-
-                newPost.set("content", content);
-                newPost.set("latitude", userLocation.latitude); 
-                newPost.set("longitude", userLocation.longitude); 
-                newPost.set("userPointer", Parse.User.current()); 
-                newPost.set("username", userName); 
-                await newPost.save(); 
-
-                postContentEl.value = ''; 
-                showMessage('Success!', 'Your wave has been shared!');
-                console.log('Post created successfully by', userName, '(', userId, ')');
-
-            } catch (error) {
-                showMessage('Post Error', 'Failed to create post: ' + error.message);
-                console.error('Error creating post:', error);
-            } finally {
-                postButtonEl.disabled = false;
-                postButtonEl.textContent = 'Post Your Wave';
-                postButtonEl.classList.remove('opacity-75', 'cursor-not-allowed');
-            }
-        }
-
-     
-        function loadPosts() {
-            if (!Parse || !Parse.User.current() || !isAuthReady || !liveQueryClient || !liveQueryClient.has.bind(liveQueryClient)) {
-                console.warn('Parse, User, Auth, or LiveQueryClient not ready. Deferring post loading.');
-                return;
-            }
-
-            
-            if (querySubscription) {
-                querySubscription.unsubscribe();
-                console.log('Previous Live Query subscription unsubscribed.');
-            }
-
-            loadingPostsEl.classList.remove('hidden'); // Show loading indicator
-            noPostsMessageEl.classList.add('hidden'); // Hide no posts message initially
-            postsContainerEl.innerHTML = `
-                <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Nearby Waves</h2>
-            `; // Clear and reset header
-
-            const Post = Parse.Object.extend("Post");
-            const query = new Parse.Query(Post);
-            query.descending("createdAt"); // Order by creation time (latest first)
-
-            // Perform initial fetch of posts
-            query.find().then(initialParseObjects => {
-                const initialPosts = initialParseObjects.map(obj => obj.toJSON()); // Convert Parse.Objects to plain JSON
-                displayAllPosts(initialPosts); // Display the fetched posts
-                loadingPostsEl.classList.add('hidden'); // Hide loading indicator
-
-                // Subscribe to Live Query for real-time updates
-                if (liveQueryClient && liveQueryClient.has(query)) { // Check if LiveQuery client is connected and can subscribe
-                    liveQueryClient.subscribe(query).then(subscription => {
-                        querySubscription = subscription;
-
-                        // Listen for 'create' events (new posts)
-                        querySubscription.on('create', (parseObject) => {
-                            console.log('Live Query: New post created!', parseObject.toJSON());
-                            // Re-fetch all posts to ensure correct order and filtering
-                            query.find().then(updatedParseObjects => {
-                                displayAllPosts(updatedParseObjects.map(obj => obj.toJSON()));
-                            }).catch(e => console.error("Error re-fetching after post creation:", e));
-                        });
-
-                        // Listen for 'update' events (post modified)
-                        querySubscription.on('update', (parseObject) => {
-                            console.log('Live Query: Post updated!', parseObject.toJSON());
-                            query.find().then(updatedParseObjects => {
-                                displayAllPosts(updatedParseObjects.map(obj => obj.toJSON()));
-                            }).catch(e => console.error("Error re-fetching after post update:", e));
-                        });
-
-                        // Listen for 'delete' events (post removed)
-                        querySubscription.on('delete', (parseObject) => {
-                            console.log('Live Query: Post deleted!', parseObject.toJSON());
-                            query.find().then(updatedParseObjects => {
-                                displayAllPosts(updatedParseObjects.map(obj => obj.toJSON()));
-                            }).catch(e => console.error("Error re-fetching after post deletion:", e));
-                        });
-
-                    }).catch(error => {
-                        console.error('Error subscribing to Parse Live Query:', error);
-                        showMessage('Live Query Error', 'Could not establish real-time updates. Posts will not update instantly: ' + error.message);
-                    });
-                } else {
-                    console.warn('Parse LiveQueryClient not fully ready or connected. Real-time updates might be disabled.');
-                }
-
-            }).catch(error => {
-                loadingPostsEl.classList.add('hidden'); // Hide loading indicator on error
-                showMessage('Error Loading Posts', 'Failed to load initial posts: ' + error.message);
-                console.error('Error fetching initial posts:', error);
             });
         }
 
+        // Initialize Firebase and set up authentication
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig); // Initialize Firebase app
+                db = getFirestore(app);             // Get Firestore instance
+                auth = getAuth(app);                 // Get Auth instance
 
-        function displayAllPosts(posts) {
-            postsContainerEl.innerHTML = `
-                <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Nearby Waves</h2>
-            `;
+                console.log("Firebase app initialized successfully.");
+                console.log("Firebase DB instance:", db);
+                console.log("Firebase Auth instance:", auth);
 
-            let displayedPosts = [];
 
-            if (userLocation.latitude && userLocation.longitude) {
-                const postsWithDistance = posts.map(post => {
-                    if (post.latitude && post.longitude) {
-                        const dist = calculateDistance(userLocation.latitude, userLocation.longitude, post.latitude, post.longitude);
-                        return { ...post, distance: dist };
+                // Attempt to sign in with custom token if provided (Canvas environment)
+                if (initialAuthToken) {
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Signed in with custom token.");
+                    } catch (tokenError) {
+                        console.warn("Custom token sign-in failed, attempting anonymous sign-in.", tokenError);
+                        // Fallback to anonymous sign-in if custom token fails or is not available
+                        await signInAnonymously(auth);
+                        console.log("Signed in anonymously (fallback).");
                     }
-                    return { ...post, distance: Infinity }; // Posts without location are considered infinitely far
+                } else {
+                    // Sign in anonymously if no custom token is provided (local run or standard setup)
+                    await signInAnonymously(auth);
+                    console.log("Signed in anonymously.");
+                }
+
+                // Listen for authentication state changes
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        userIdDisplay.textContent = currentUserId.substring(0, 8) + '...'; // Display truncated ID
+                        console.log("Firebase user signed in:", currentUserId);
+                        // Once authenticated, get location and then start listening for posts
+                        getUserLocation().then(() => {
+                            setupPostListener();
+                        }).catch(err => console.error("Error getting location after auth:", err));
+                    } else {
+                        currentUserId = null;
+                        userIdDisplay.textContent = 'Not authenticated';
+                        console.log("No user signed in.");
+                        showMessageBox("Authentication failed. Please check console for details.");
+                    }
                 });
 
-                displayedPosts = postsWithDistance.filter(post => post.distance <= PROXIMITY_RADIUS_KM)
-                                                  .sort((a, b) => a.distance - b.distance);
-            } else {
-                displayedPosts = posts;
+            } catch (error) {
+                console.error("Critical Error during Firebase initialization or sign-in:", error.code, error.message, error);
+                showMessageBox(`Failed to initialize the app: ${error.message}. Please check console for details.`);
             }
+        }
 
-            if (displayedPosts.length === 0) {
-                noPostsMessageEl.classList.remove('hidden');
-            } else {
-                noPostsMessageEl.classList.add('hidden');
-                displayedPosts.forEach(post => {
-                    displayPost(post, post.distance);
+        // Function to display posts in the UI
+        function displayPosts(postsData) {
+            postsContainer.innerHTML = ''; // Clear existing posts
+            let foundNearby = false;
+
+            if (userLocation && postsData.length > 0) {
+                // Filter and display posts within 500 meters
+                postsData.forEach(post => {
+                    if (post.location && post.location.latitude && post.location.longitude) {
+                        const distance = calculateDistance(
+                            userLocation.latitude, userLocation.longitude,
+                            post.location.latitude, post.location.longitude
+                        );
+
+                        if (distance <= 500) { // Within 500 meters
+                            foundNearby = true;
+                            const postCard = document.createElement('div');
+                            postCard.className = 'post-card';
+                            // Format timestamp for display
+                            const timestamp = post.timestamp ? new Date(post.timestamp).toLocaleString() : 'N/A';
+                            // Format distance for display
+                            const distanceDisplay = distance < 1 ? '<1 meter' : `${distance.toFixed(0)} meters`;
+
+                            postCard.innerHTML = `
+                                <p class="post-text">${post.text}</p>
+                                <div class="post-meta">
+                                    <span>Posted by: <span class="font-medium">${post.userId.substring(0, 8)}...</span></span>
+                                    <span>${timestamp}</span>
+                                    <span>${distanceDisplay} away</span>
+                                </div>
+                            `;
+                            postsContainer.appendChild(postCard);
+                        }
+                    }
                 });
+            } else if (!userLocation) {
+                noPostsMessage.textContent = "Your location is required to filter local posts. Please enable location services.";
+                noPostsMessage.style.display = 'block';
+                return;
             }
-        }
-        
-        function displayPost(post, distance) {
-            const postElement = document.createElement('div');
-            postElement.className = 'post-item bg-white p-5 rounded-lg shadow-md border border-gray-200 hover:shadow-xl transition duration-200 ease-in-out transform hover:-translate-y-1';
 
-            const postHeader = document.createElement('div');
-            postHeader.className = 'flex items-center mb-3';
-
-            const userIcon = document.createElement('div');
-            userIcon.className = 'w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-lg mr-4 shadow-sm';
-            userIcon.textContent = post.username ? post.username.charAt(0).toUpperCase() : 'A';
-
-            const usernameSpan = document.createElement('span');
-            usernameSpan.className = 'font-semibold text-lg text-gray-800';
-            usernameSpan.textContent = post.username || 'Anonymous';
-
-            postHeader.appendChild(userIcon);
-            postHeader.appendChild(usernameSpan);
-
-            const postContent = document.createElement('p');
-            postContent.className = 'text-gray-700 text-base leading-relaxed mb-3';
-            postContent.textContent = post.content;
-
-            const postFooter = document.createElement('div');
-            postFooter.className = 'text-sm text-gray-500 flex justify-between items-center mt-3 border-t border-gray-100 pt-3';
-
-            const timestamp = post.createdAt ? new Date(post.createdAt).toLocaleString() : 'Just now';
-            const timestampSpan = document.createElement('span');
-            timestampSpan.textContent = timestamp;
-            timestampSpan.className = 'text-xs font-medium text-gray-400';
-
-            const distanceSpan = document.createElement('span');
-            if (distance !== null && distance !== Infinity) {
-                distanceSpan.textContent = `${distance.toFixed(2)} km away`;
-                distanceSpan.className = 'bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold shadow-sm';
-            } else if (post.latitude === null || post.longitude === null) {
-                distanceSpan.textContent = 'Location unknown';
-                distanceSpan.className = 'bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-semibold shadow-sm';
+            if (!foundNearby && postsData.length > 0) {
+                noPostsMessage.textContent = "No posts found within 500 meters of your current location.";
+                noPostsMessage.style.display = 'block'; // Show message if no posts found nearby
+            } else if (postsData.length === 0) {
+                noPostsMessage.textContent = "No posts found. Be the first to post!";
+                noPostsMessage.style.display = 'block';
             } else {
-                 distanceSpan.textContent = `> ${PROXIMITY_RADIUS_KM} km away`;
-                 distanceSpan.className = 'bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-semibold shadow-sm';
+                noPostsMessage.style.display = 'none'; // Hide message if posts are found
             }
-
-            postFooter.appendChild(timestampSpan);
-            postFooter.appendChild(distanceSpan);
-
-            postElement.appendChild(postHeader);
-            postElement.appendChild(postContent);
-            postElement.appendChild(postFooter);
-
-            postsContainerEl.appendChild(postElement);
         }
 
-        postButtonEl.addEventListener('click', createPost);
+        // Set up real-time listener for posts from Firestore
+        function setupPostListener() {
+            if (!db) {
+                console.error("Firestore not initialized, cannot set up listener. DB object is null or undefined.");
+                showMessageBox("Database not ready. Cannot load posts. Check console.");
+                return;
+            }
 
-        
-        window.onload = function() {
-            getUserLocation();
-                initializeParse();       };
+            // Collection reference for public data under the app ID
+            const postsCollectionRef = collection(db, `artifacts/${appId}/public/data/posts`);
+
+            // Use onSnapshot to listen for real-time updates to the posts collection
+            const q = query(postsCollectionRef); // Fetch all, then filter and sort in JS
+
+            onSnapshot(q, (snapshot) => {
+                const posts = [];
+                snapshot.forEach(doc => {
+                    posts.push({ id: doc.id, ...doc.data() });
+                });
+                // Sort posts by timestamp in descending order (most recent first) in memory
+                posts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                displayPosts(posts); // Update the UI with the filtered and sorted posts
+            }, (error) => {
+                console.error("Error fetching posts:", error.code, error.message, error);
+                showMessageBox(`Failed to load posts: ${error.message}. Please check your Firestore security rules and network connection.`);
+            });
+        }
+
+        // Event listener for the Post button
+        postButton.addEventListener('click', async () => {
+            const postContent = postContentInput.value.trim();
+
+            if (!postContent) {
+                showMessageBox("Post content cannot be empty.");
+                return;
+            }
+            if (!currentUserId) {
+                showMessageBox("You must be authenticated to post. Please try refreshing the page.");
+                return;
+            }
+            if (!userLocation) {
+                showMessageBox("Your location is still being determined or could not be found. Please wait or ensure location services are enabled.");
+                await getUserLocation(); // Try to get location again
+                if (!userLocation) { // If still no location after retry, stop here
+                    showMessageBox("Could not get your location. Post cancelled.");
+                    return;
+                }
+            }
+
+            try {
+                // Add the new post document to Firestore
+                await addDoc(collection(db, `artifacts/${appId}/public/data/posts`), {
+                    userId: currentUserId,
+                    text: postContent,
+                    timestamp: Date.now(), // Store current time as Unix timestamp
+                    location: userLocation // Store current user's location (latitude, longitude)
+                });
+                postContentInput.value = ''; // Clear the input field after successful post
+            } catch (error) {
+                console.error("Error adding document: ", error.code, error.message, error);
+                showMessageBox(`Failed to add post: ${error.message}. Check Firestore permissions.`);
+            }
+        });
+
+        // Initialize the app when the page loads
+        initializeFirebase();
     </script>
 </body>
 </html>
