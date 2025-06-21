@@ -1,1 +1,476 @@
 <!DOCTYPE html>
+<html>
+<head>
+    <title>LWK - Local Wave</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Parse JavaScript SDK from unpkg -->
+    <script type="text/javascript" src="https://unpkg.com/parse/dist/parse.min.js"></script>
+    <style>
+        /* Custom font for a clean look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: rgb(211, 238, 225); /* Matches user's background color */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        /* Style for the main container to center it and add padding */
+        #app {
+            background-color: #ffffff;
+            border-radius: 13px; /* Rounded corners for the app container */
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            margin: 2rem auto; /* Center the app and provide vertical margin */
+            max-width: 90%; /* Max width for responsiveness */
+            width: 600px; /* Desired width on larger screens */
+        }
+        /* Specific styles for buttons */
+        button {
+            border-radius: 34px; /* Matches user's button style */
+            border: 2px solid transparent; /* Ensure border is transparent unless hovered/focused */
+        }
+        /* Modal backdrop styles */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+        }
+        /* Post item styling */
+        .post-item {
+            border-radius: 8px;
+        }
+        /* Spinner for loading indicator */
+        .spinner-border {
+            border-top-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="relative">
+        <!-- Application Title -->
+        <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-8 tracking-tight">Local Wave 🌊</h1>
+
+        <!-- Geolocation Status -->
+        <div id="location-status" class="text-center text-gray-600 text-sm mb-6 p-2 bg-blue-50 rounded-lg shadow-sm">
+            Attempting to get your location...
+        </div>
+
+        <!-- Post Creation Form -->
+        <div class="mb-10 p-5 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Share Your Wave</h2>
+            <textarea id="post-content"
+                      class="w-full p-4 border border-blue-200 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition duration-200 ease-in-out text-base text-gray-700 placeholder-gray-400 shadow-sm"
+                      rows="5"
+                      placeholder="What's happening in your neighborhood? Share a local update!"></textarea>
+            <button id="post-button"
+                    class="w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold py-3 px-6 rounded-3xl hover:from-blue-700 hover:to-indigo-800 transition duration-300 ease-in-out shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                Post Your Wave
+            </button>
+        </div>
+
+        <!-- Posts Display Area -->
+        <div id="posts-container" class="space-y-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Nearby Waves</h2>
+            <!-- Posts will be dynamically loaded here -->
+            <div id="loading-posts" class="text-center text-gray-500 hidden">
+                <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-blue-500 border-r-transparent" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading nearby posts...</p>
+            </div>
+            <div id="no-posts-message" class="text-center text-gray-500 text-md p-4 bg-gray-50 rounded-lg shadow-sm hidden">
+                No waves found nearby. Be the first to share something amazing!
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Message Box/Modal -->
+    <div id="message-modal" class="fixed inset-0 modal-backdrop flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-xl p-8 shadow-2xl max-w-sm w-full text-center transform scale-95 transition-transform duration-300">
+            <h3 id="modal-title" class="text-2xl font-bold text-gray-900 mb-4"></h3>
+            <p id="modal-message" class="text-gray-700 text-lg mb-8"></p>
+            <button id="modal-close-button" class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold py-3 px-6 rounded-3xl hover:from-blue-700 hover:to-indigo-800 transition duration-300 shadow-md">
+                Got it!
+            </button>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // Global variables for Parse instances and user data
+        let userId = ''; // Stores the authenticated user's ID
+        let userName = 'Anonymous'; // Default username, could be fetched from a user profile
+        let userLocation = { latitude: null, longitude: null }; // Stores user's current geographic location
+        let isAuthReady = false; // Flag to indicate Parse authentication state is known
+
+        // Parse LiveQuery related variables
+        let liveQueryClient;
+        let querySubscription;
+
+        const LOCATION_FETCH_TIMEOUT = 15000; // 15 seconds timeout for geolocation
+        const PROXIMITY_RADIUS_KM = 50; // Filter posts within this radius (in kilometers)
+
+        // UI element references
+        const locationStatusEl = document.getElementById('location-status');
+        const postContentEl = document.getElementById('post-content');
+        const postButtonEl = document.getElementById('post-button');
+        const postsContainerEl = document.getElementById('posts-container');
+        const loadingPostsEl = document.getElementById('loading-posts');
+        const noPostsMessageEl = document.getElementById('no-posts-message');
+        const messageModalEl = document.getElementById('message-modal');
+        const modalTitleEl = document.getElementById('modal-title');
+        const modalMessageEl = document.getElementById('modal-message');
+        const modalCloseButtonEl = document.getElementById('modal-close-button');
+
+        /**
+         * @brief Displays a custom modal message to the user instead of `alert()`.
+         * @param {string} title The title of the message.
+         * @param {string} message The content of the message.
+         */
+        function showMessage(title, message) {
+            modalTitleEl.textContent = title;
+            modalMessageEl.textContent = message;
+            messageModalEl.classList.remove('hidden');
+            messageModalEl.classList.add('flex'); // Ensure flexbox for centering
+        }
+
+        /**
+         * @brief Hides the custom modal message.
+         */
+        modalCloseButtonEl.addEventListener('click', () => {
+            messageModalEl.classList.add('hidden');
+            messageModalEl.classList.remove('flex');
+        });
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of Earth in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c; 
+            return distance;
+        }
+
+       
+        async function initializeParse() {
+            try {
+                Parse.initialize('lOBQbrW6iEmGqO2PEscnVC5TfudBeG7EeUCwuMJR', '37LpjkN2RDwaYiY3G0z6KEJY5hsUSxnlrrg7Ou6f');
+                Parse.serverURL = 'https://parseapi.back4app.com/';
+
+                let currentUser = await Parse.User.current();
+
+                if (!currentUser) {
+                    currentUser = await Parse.User.logInAnonymously();
+                    console.log("Logged in anonymously. User ID:", currentUser.id);
+                } else {
+                    console.log("Existing user logged in. User ID:", currentUser.id);
+                }
+
+                userId = currentUser.id;
+                userName = currentUser.get('username') || currentUser.get('fname') || 'Anonymous User';
+
+                locationStatusEl.textContent = `Location ready. Signed in as: ${userName} (ID: ${userId})`;
+                isAuthReady = true; 
+
+                liveQueryClient = new Parse.LiveQueryClient({
+                    applicationId: 'lOBQbrW6iEmGqO2PEscnVC5TfudBeG7EeUCwuMJR',
+                    serverURL: 'wss://parseapi.back4app.com/', 
+                    javaScriptKey: '37LpjkN2RDwaYiY3G0z6KEJY5hsUSxnlrrg7Ou6f'
+                });
+
+                liveQueryClient.open();
+
+                liveQueryClient.on('open', () => console.log('Parse LiveQuery Client connected.'));
+                liveQueryClient.on('close', () => console.log('Parse LiveQuery Client closed.'));
+                liveQueryClient.on('error', (error) => console.error('Parse LiveQuery Client error:', error));
+
+                loadPosts();
+
+            } catch (error) {
+                showMessage('Parse Init Error', 'Failed to initialize Parse or authenticate: ' + error.message);
+                console.error('Parse initialization error:', error);
+            }
+        }
+
+        
+        function getUserLocation() {
+            locationStatusEl.textContent = 'Attempting to get your location... (Please allow location access)';
+            postButtonEl.disabled = true; 
+            const options = {
+                enableHighAccuracy: true, 
+                timeout: LOCATION_FETCH_TIMEOUT, 
+                maximumAge: 0
+            };
+
+            const success = (position) => {
+                userLocation.latitude = position.coords.latitude;
+                userLocation.longitude = position.coords.longitude;
+                locationStatusEl.textContent = `Your Location: Lat ${userLocation.latitude.toFixed(4)}, Lon ${userLocation.longitude.toFixed(4)}`;
+                postButtonEl.disabled = false;
+                console.log('User location obtained:', userLocation);
+                if (isAuthReady) {
+                    loadPosts(); 
+                }
+            };
+
+            const error = (err) => {
+                let errorMessage = 'Failed to retrieve your precise location. ';
+                if (err.code === err.PERMISSION_DENIED) {
+                    errorMessage += 'Location access was denied. Posts will not be filtered by proximity to you.';
+                } else if (err.code === err.TIMEOUT) {
+                    errorMessage += 'Location request timed out. Please refresh or try again.';
+                } else {
+                    errorMessage += `Error code: ${err.code}.`;
+                }
+                locationStatusEl.textContent = errorMessage;
+                showMessage('Location Unavailable', errorMessage + ' You can still post, but posts will not be filtered by proximity until location is available.');
+                console.error('Geolocation error:', err);
+                postButtonEl.disabled = false; 
+                if (isAuthReady) {
+                    loadPosts(); 
+                }
+            };
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(success, error, options);
+            } else {
+                locationStatusEl.textContent = 'Geolocation is not supported by your browser.';
+                showMessage('Browser Issue', 'Your browser does not support geolocation. Posts cannot be filtered by proximity.');
+                console.error('Geolocation is not supported.');
+                postButtonEl.disabled = false;
+                if (isAuthReady) {
+                    loadPosts();
+                }
+            }
+        }
+
+
+        async function createPost() {
+            const content = postContentEl.value.trim();
+
+            if (!content) {
+                showMessage('Input Required', 'Please write something before posting!');
+                return;
+            }
+
+            if (!Parse.User.current()) {
+                showMessage('Authentication Required', 'Please ensure you are logged in or an anonymous user session is established before posting.');
+                console.error('No Parse user is authenticated to create a post.');
+                return;
+            }
+
+            
+            if (!userLocation.latitude || !userLocation.longitude) {
+                showMessage('Location Missing', 'Your location is not available. Your post will not have location data. You can still post, but it won\'t appear in location-based searches.');
+            }
+
+            postButtonEl.disabled = true;
+            postButtonEl.textContent = 'Sharing Wave...';
+            postButtonEl.classList.add('opacity-75', 'cursor-not-allowed');
+
+            try {
+                const Post = Parse.Object.extend("Post");
+                const newPost = new Post();
+
+                newPost.set("content", content);
+                newPost.set("latitude", userLocation.latitude); 
+                newPost.set("longitude", userLocation.longitude); 
+                newPost.set("userPointer", Parse.User.current()); 
+                newPost.set("username", userName); 
+                await newPost.save(); 
+
+                postContentEl.value = ''; 
+                showMessage('Success!', 'Your wave has been shared!');
+                console.log('Post created successfully by', userName, '(', userId, ')');
+
+            } catch (error) {
+                showMessage('Post Error', 'Failed to create post: ' + error.message);
+                console.error('Error creating post:', error);
+            } finally {
+                postButtonEl.disabled = false;
+                postButtonEl.textContent = 'Post Your Wave';
+                postButtonEl.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+
+     
+        function loadPosts() {
+            if (!Parse || !Parse.User.current() || !isAuthReady || !liveQueryClient || !liveQueryClient.has.bind(liveQueryClient)) {
+                console.warn('Parse, User, Auth, or LiveQueryClient not ready. Deferring post loading.');
+                return;
+            }
+
+            
+            if (querySubscription) {
+                querySubscription.unsubscribe();
+                console.log('Previous Live Query subscription unsubscribed.');
+            }
+
+            loadingPostsEl.classList.remove('hidden'); // Show loading indicator
+            noPostsMessageEl.classList.add('hidden'); // Hide no posts message initially
+            postsContainerEl.innerHTML = `
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Nearby Waves</h2>
+            `; // Clear and reset header
+
+            const Post = Parse.Object.extend("Post");
+            const query = new Parse.Query(Post);
+            query.descending("createdAt"); // Order by creation time (latest first)
+
+            // Perform initial fetch of posts
+            query.find().then(initialParseObjects => {
+                const initialPosts = initialParseObjects.map(obj => obj.toJSON()); // Convert Parse.Objects to plain JSON
+                displayAllPosts(initialPosts); // Display the fetched posts
+                loadingPostsEl.classList.add('hidden'); // Hide loading indicator
+
+                // Subscribe to Live Query for real-time updates
+                if (liveQueryClient && liveQueryClient.has(query)) { // Check if LiveQuery client is connected and can subscribe
+                    liveQueryClient.subscribe(query).then(subscription => {
+                        querySubscription = subscription;
+
+                        // Listen for 'create' events (new posts)
+                        querySubscription.on('create', (parseObject) => {
+                            console.log('Live Query: New post created!', parseObject.toJSON());
+                            // Re-fetch all posts to ensure correct order and filtering
+                            query.find().then(updatedParseObjects => {
+                                displayAllPosts(updatedParseObjects.map(obj => obj.toJSON()));
+                            }).catch(e => console.error("Error re-fetching after post creation:", e));
+                        });
+
+                        // Listen for 'update' events (post modified)
+                        querySubscription.on('update', (parseObject) => {
+                            console.log('Live Query: Post updated!', parseObject.toJSON());
+                            query.find().then(updatedParseObjects => {
+                                displayAllPosts(updatedParseObjects.map(obj => obj.toJSON()));
+                            }).catch(e => console.error("Error re-fetching after post update:", e));
+                        });
+
+                        // Listen for 'delete' events (post removed)
+                        querySubscription.on('delete', (parseObject) => {
+                            console.log('Live Query: Post deleted!', parseObject.toJSON());
+                            query.find().then(updatedParseObjects => {
+                                displayAllPosts(updatedParseObjects.map(obj => obj.toJSON()));
+                            }).catch(e => console.error("Error re-fetching after post deletion:", e));
+                        });
+
+                    }).catch(error => {
+                        console.error('Error subscribing to Parse Live Query:', error);
+                        showMessage('Live Query Error', 'Could not establish real-time updates. Posts will not update instantly: ' + error.message);
+                    });
+                } else {
+                    console.warn('Parse LiveQueryClient not fully ready or connected. Real-time updates might be disabled.');
+                }
+
+            }).catch(error => {
+                loadingPostsEl.classList.add('hidden'); // Hide loading indicator on error
+                showMessage('Error Loading Posts', 'Failed to load initial posts: ' + error.message);
+                console.error('Error fetching initial posts:', error);
+            });
+        }
+
+        function displayAllPosts(posts) {
+            // Clear current posts display, keeping the header
+            postsContainerEl.innerHTML = `
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Nearby Waves</h2>
+            `;
+
+            let displayedPosts = [];
+
+            if (userLocation.latitude && userLocation.longitude) {
+                // Calculate distance for each post and filter by radius
+                const postsWithDistance = posts.map(post => {
+                    if (post.latitude && post.longitude) {
+                        const dist = calculateDistance(userLocation.latitude, userLocation.longitude, post.latitude, post.longitude);
+                        return { ...post, distance: dist };
+                    }
+                    return { ...post, distance: Infinity }; // Posts without location are considered infinitely far
+                });
+
+                // Filter posts within the defined radius and sort by distance (closest first)
+                displayedPosts = postsWithDistance.filter(post => post.distance <= PROXIMITY_RADIUS_KM)
+                                                  .sort((a, b) => a.distance - b.distance);
+            } else {
+                // If user's location is not available, show all posts (no proximity filtering)
+                displayedPosts = posts;
+            }
+
+            if (displayedPosts.length === 0) {
+                noPostsMessageEl.classList.remove('hidden');
+            } else {
+                noPostsMessageEl.classList.add('hidden');
+                displayedPosts.forEach(post => {
+                    displayPost(post, post.distance);
+                });
+            }
+        }
+        
+        function displayPost(post, distance) {
+            const postElement = document.createElement('div');
+            postElement.className = 'post-item bg-white p-5 rounded-lg shadow-md border border-gray-200 hover:shadow-xl transition duration-200 ease-in-out transform hover:-translate-y-1';
+
+            const postHeader = document.createElement('div');
+            postHeader.className = 'flex items-center mb-3';
+
+            // User icon/avatar (first letter of username)
+            const userIcon = document.createElement('div');
+            userIcon.className = 'w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-lg mr-4 shadow-sm';
+            userIcon.textContent = post.username ? post.username.charAt(0).toUpperCase() : 'A';
+
+            const usernameSpan = document.createElement('span');
+            usernameSpan.className = 'font-semibold text-lg text-gray-800';
+            usernameSpan.textContent = post.username || 'Anonymous';
+
+            postHeader.appendChild(userIcon);
+            postHeader.appendChild(usernameSpan);
+
+            const postContent = document.createElement('p');
+            postContent.className = 'text-gray-700 text-base leading-relaxed mb-3';
+            postContent.textContent = post.content;
+
+            const postFooter = document.createElement('div');
+            postFooter.className = 'text-sm text-gray-500 flex justify-between items-center mt-3 border-t border-gray-100 pt-3';
+
+            const timestamp = post.createdAt ? new Date(post.createdAt).toLocaleString() : 'Just now';
+            const timestampSpan = document.createElement('span');
+            timestampSpan.textContent = timestamp;
+            timestampSpan.className = 'text-xs font-medium text-gray-400';
+
+            const distanceSpan = document.createElement('span');
+            if (distance !== null && distance !== Infinity) {
+                distanceSpan.textContent = `${distance.toFixed(2)} km away`;
+                distanceSpan.className = 'bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold shadow-sm';
+            } else if (post.latitude === null || post.longitude === null) {
+                distanceSpan.textContent = 'Location unknown';
+                distanceSpan.className = 'bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-semibold shadow-sm';
+            } else {
+                 distanceSpan.textContent = `> ${PROXIMITY_RADIUS_KM} km away`;
+                 distanceSpan.className = 'bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-semibold shadow-sm';
+            }
+
+            postFooter.appendChild(timestampSpan);
+            postFooter.appendChild(distanceSpan);
+
+            postElement.appendChild(postHeader);
+            postElement.appendChild(postContent);
+            postElement.appendChild(postFooter);
+
+            postsContainerEl.appendChild(postElement);
+        }
+
+        postButtonEl.addEventListener('click', createPost);
+
+        
+        window.onload = function() {
+            getUserLocation();
+                initializeParse();       };
+    </script>
+</body>
+</html>
