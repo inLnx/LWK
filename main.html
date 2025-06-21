@@ -211,6 +211,7 @@
             padding: 10px 5px;
             font-size: 0.85rem;
             line-height: 1.2;
+            display: none; /* Initially hidden, controlled by JS */
         }
         .summarize-btn {
             background-color: #22c55e; /* Green for summarize */
@@ -426,20 +427,19 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase configuration (provided by the environment or replaced locally)
         const firebaseConfig = typeof __firebase_config !== 'undefined'
             ? JSON.parse(__firebase_config)
             : {
-                  apiKey: "AIzaSyAE37qdlDBYSUhumSO6jTA985V81DN9iA8",
-  authDomain: "lowk-be8e0.firebaseapp.com",
-  projectId: "lowk-be8e0",
-  storageBucket: "lowk-be8e0.firebasestorage.app",
-  messagingSenderId: "244867743683",
-  appId: "1:244867743683:web:1b11ac7b94462ef5314776",
-  measurementId: "G-LHZ53VWW03"
+                apiKey: "YOUR_API_KEY", // Replace with your actual API Key
+                authDomain: "YOUR_AUTH_DOMAIN", // Replace with your actual Auth Domain
+                projectId: "YOUR_PROJECT_ID", // Replace with your actual Project ID
+                storageBucket: "YOUR_STORAGE_BUCKET", // Replace with your actual Storage Bucket
+                messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace with your actual Messaging Sender ID
+                appId: "YOUR_APP_ID" // Replace with your actual App ID
               };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -625,7 +625,13 @@
                     showMessageBox(`Google Sign-in failed: ${error.message}. Please try again.`);
                 }
                 // Fallback to anonymous sign-in if Google sign-in fails
-                await signInAnonymously(auth);
+                // NOTE: We generally want to avoid auto-anonymous sign-in here if the user explicitly cancels Google SSO,
+                // but for robust local testing without Canvas token, keeping a path to an authenticated user is useful.
+                // For a production app, you might remove this fallback if Google SSO is mandatory.
+                if (!auth.currentUser) { // Only fallback if no user is signed in after the attempt
+                    await signInAnonymously(auth);
+                    console.log("Signed in anonymously as fallback after Google sign-in attempt.");
+                }
             }
         }
 
@@ -660,20 +666,24 @@
 
                 console.log("Firebase app initialized successfully.");
 
+                // Set Google Sign-in button to be visible by default, then onAuthStateChanged will manage it
+                googleSignInBtn.style.display = 'flex'; 
+
                 // If running in Canvas with initialAuthToken, try custom token sign-in first
                 if (initialAuthToken) {
                     try {
                         await signInWithCustomToken(auth, initialAuthToken);
                         console.log("Signed in with custom token (Canvas environment).");
                     } catch (tokenError) {
-                        console.warn("Custom token sign-in failed, falling back to anonymous/Google if already signed in.", tokenError);
-                        // If custom token fails, let onAuthStateChanged handle the initial user state
+                        console.warn("Custom token sign-in failed, letting onAuthStateChanged handle it.", tokenError);
+                        // Do not attempt anonymous sign-in here. Let onAuthStateChanged resolve.
                     }
-                } else if (!auth.currentUser) {
-                    // For local runs without Canvas token, try anonymous sign-in by default
-                    // or wait for explicit Google sign-in
-                    await signInAnonymously(auth);
-                    console.log("Signed in anonymously (local/initial).");
+                } else {
+                    // For local runs, onAuthStateChanged will handle whether a user is already authenticated
+                    // (e.g., from a previous session) or if the button should remain visible for explicit sign-in.
+                    // We explicitly *do not* call signInAnonymously here for local runs,
+                    // allowing the Google button to be present for user choice.
+                    console.log("No initialAuthToken in local run. Waiting for onAuthStateChanged.");
                 }
 
 
@@ -686,10 +696,6 @@
                         currentUserPhotoURL = profile.photoURL || user.photoURL || '';
 
                         userIdValueDisplay.textContent = currentUserDisplayName; // Show display name
-                        // Optional: Display PFP in the footer if you add an img tag there
-                        // console.log("Current user profile:", { uid: currentUserId, displayName: currentUserDisplayName, photoURL: currentUserPhotoURL });
-
-
                         console.log("Firebase user signed in:", currentUserId, "Name:", currentUserDisplayName);
                         getUserLocation().then(() => {
                             setupPostListener(); // Only set up post listener after auth and location
@@ -706,7 +712,7 @@
                         console.log("No user signed in.");
                         showMessageBox("Please sign in to post and see personalized content.");
                         // Show Google Sign-in button if not signed in
-                        googleSignInBtn.style.display = 'flex'; // Use flex to maintain styling
+                        googleSignInBtn.style.display = 'flex'; // Ensure it's visible if no user
                     }
                 });
 
@@ -737,83 +743,87 @@
                  return;
             }
 
-            postsData.forEach(async (post) => { // Use async here because we fetch user profile
-                if (post.location && post.location.latitude && post.location.longitude) {
-                    const distance = calculateDistance(
-                        userLocation.latitude, userLocation.longitude,
-                        post.location.latitude, post.location.longitude
-                    );
-                    
-                    console.log(`Post ID: ${post.id}, Post Location: (${post.location.latitude}, ${post.location.longitude}), Distance: ${distance.toFixed(2)}m`);
+            // Using for...of loop with async/await for better handling of async getUserProfile
+            (async () => {
+                for (const post of postsData) { 
+                    if (post.location && post.location.latitude && post.location.longitude) {
+                        const distance = calculateDistance(
+                            userLocation.latitude, userLocation.longitude,
+                            post.location.latitude, post.location.longitude
+                        );
+                        
+                        console.log(`Post ID: ${post.id}, Post Location: (${post.location.latitude}, ${post.location.longitude}), Distance: ${distance.toFixed(2)}m`);
 
-                    if (distance <= 500) { // Within 500 meters
-                        foundNearby = true;
-                        const postSquare = document.createElement('div');
-                        postSquare.className = 'post-square';
+                        if (distance <= 500) { // Within 500 meters
+                            foundNearby = true;
+                            const postSquare = document.createElement('div');
+                            postSquare.className = 'post-square';
 
-                        const timestamp = post.timestamp ? new Date(post.timestamp).toLocaleString() : 'N/A';
-                        const distanceDisplay = distance < 1 ? '<1m' : `${distance.toFixed(0)}m`;
+                            const timestamp = post.timestamp ? new Date(post.timestamp).toLocaleString() : 'N/A';
+                            const distanceDisplay = distance < 1 ? '<1m' : `${distance.toFixed(0)}m`;
 
-                        let linkPreviewHtml = '';
-                        if (post.linkUrl) {
-                            const domain = getDomainFromUrl(post.linkUrl);
-                            const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : '';
-                            linkPreviewHtml = `
-                                <div class="link-preview-image">
-                                    <a href="${post.linkUrl}" target="_blank" rel="noopener noreferrer">
-                                        <img src="${faviconUrl}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/dddddd/aaaaaa?text=Link';" alt="Link preview">
-                                    </a>
+                            let linkPreviewHtml = '';
+                            if (post.linkUrl) {
+                                const domain = getDomainFromUrl(post.linkUrl);
+                                const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : '';
+                                linkPreviewHtml = `
+                                    <div class="link-preview-image">
+                                        <a href="${post.linkUrl}" target="_blank" rel="noopener noreferrer">
+                                            <img src="${faviconUrl}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/dddddd/aaaaaa?text=Link';" alt="Link preview">
+                                        </a>
+                                    </div>
+                                `;
+                            }
+                            
+                            // Fetch author's profile for display
+                            const authorProfile = await getUserProfile(post.userId);
+                            const authorName = authorProfile.displayName || post.userId.substring(0, 5) + '...';
+                            const authorPhoto = authorProfile.photoURL || 'https://placehold.co/32x32/cccccc/333333?text=👤';
+
+
+                            const summarizeButton = `<button class="summarize-btn" data-post-text="${encodeURIComponent(post.text)}">✨ Summarize</button>`;
+
+
+                            postSquare.innerHTML = `
+                                ${linkPreviewHtml}
+                                <div class="text-content">${post.text}</div>
+                                <div class="meta-info">
+                                    <span class="flex items-center gap-1">
+                                        <img src="${authorPhoto}" class="w-4 h-4 rounded-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/32x32/cccccc/333333?text=👤';" alt="Profile Picture">
+                                        By: <span class="font-medium">${authorName}</span>
+                                    </span>
+                                    <span>${timestamp}</span>
+                                    <span>${distanceDisplay} away</span>
+                                    ${summarizeButton}
                                 </div>
                             `;
+                            postsGrid.appendChild(postSquare);
+                        } else {
+                            console.log(`Post ID: ${post.id} is too far away (${distance.toFixed(2)}m), skipping.`);
                         }
-                        
-                        // Fetch author's profile for display
-                        const authorProfile = await getUserProfile(post.userId);
-                        const authorName = authorProfile.displayName || post.userId.substring(0, 5) + '...';
-                        const authorPhoto = authorProfile.photoURL || 'https://placehold.co/32x32/cccccc/333333?text=👤';
-
-
-                        const summarizeButton = `<button class="summarize-btn" data-post-text="${encodeURIComponent(post.text)}">✨ Summarize</button>`;
-
-
-                        postSquare.innerHTML = `
-                            ${linkPreviewHtml}
-                            <div class="text-content">${post.text}</div>
-                            <div class="meta-info">
-                                <span class="flex items-center gap-1">
-                                    <img src="${authorPhoto}" class="w-4 h-4 rounded-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/32x32/cccccc/333333?text=👤';" alt="Profile Picture">
-                                    By: <span class="font-medium">${authorName}</span>
-                                </span>
-                                <span>${timestamp}</span>
-                                <span>${distanceDisplay} away</span>
-                                ${summarizeButton}
-                            </div>
-                        `;
-                        postsGrid.appendChild(postSquare);
                     } else {
-                        console.log(`Post ID: ${post.id} is too far away (${distance.toFixed(2)}m), skipping.`);
+                        console.warn(`Post ID: ${post.id} is missing location data, skipping.`);
                     }
-                } else {
-                    console.warn(`Post ID: ${post.id} is missing location data, skipping.`);
                 }
-            });
-            // Attach event listeners after all posts are added to DOM
-            document.querySelectorAll('.summarize-btn').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    const postText = decodeURIComponent(event.target.dataset.postText);
-                    showSummaryModal(postText);
+
+                // After all posts are processed, check if any were found nearby
+                if (!foundNearby && postsData.length > 0) {
+                    noPostsMessage.textContent = "No posts found within 500 meters of your current location. Try posting one from your current spot!";
+                    noPostsMessage.style.display = 'block';
+                    console.log("Display Posts: No nearby posts found despite fetching some posts.");
+                } else if (foundNearby) {
+                    noPostsMessage.style.display = 'none';
+                    console.log("Display Posts: Posts successfully displayed.");
+                }
+
+                // Attach event listeners after all posts are added to DOM
+                document.querySelectorAll('.summarize-btn').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const postText = decodeURIComponent(event.target.dataset.postText);
+                        showSummaryModal(postText);
+                    });
                 });
-            });
-
-
-            if (!foundNearby && postsData.length > 0) {
-                noPostsMessage.textContent = "No posts found within 500 meters of your current location. Try posting one from your current spot!";
-                noPostsMessage.style.display = 'block';
-                console.log("Display Posts: No nearby posts found despite fetching some posts.");
-            } else if (foundNearby) {
-                noPostsMessage.style.display = 'none';
-                console.log("Display Posts: Posts successfully displayed.");
-            }
+            })(); // Immediately invoke the async IIFE
         }
 
         // Set up real-time listener for posts from Firestore
@@ -990,8 +1000,8 @@ Post: '${postText}'`;
                     const summary = result.candidates[0].content.parts[0].text.trim();
                     summaryContent.textContent = summary;
                 } else {
-                    summaryContent.textContent = "Could not generate summary. Unexpected API response.";
-                    console.error("Unexpected API response structure for summary:", result);
+                    showMessageBox("Could not generate summary. Unexpected API response.");
+                    console.error("Unexpected API response structure:", result);
                 }
 
             } catch (error) {
