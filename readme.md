@@ -6,3 +6,8 @@
 ### We only use your location for finding posts near you
 ### Staff cannot see your exact location
 ### Currently an error when disabling location, google sign in will say sign out
+
+# Roadmap
+
+### Things we wont have
++ Image support, the firebase plan for that is paid.

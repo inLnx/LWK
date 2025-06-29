@@ -4,30 +4,78 @@
     <title>Lwk</title>
     </head>
 <body>
-    <button id="login" onclick="location.href='main.html';"> </button>
     <h1>LWK</h1>
     <p>lowkey.</p>
+    <button id="login" onclick="location.href='main.html';"> </button>
     <style>
         body {
-        background-color: rgb(117, 59, 59);
+        background-color: rgb(255, 255, 255);
         font-family: Arial, Helvetica, sans-serif;
+        }
         
+        h1, h2, h3, h4, h5, h6, p{
+            text-align: center;
         }
         
         button{
         border-radius: 3px;
         border: 2px;
-        background-color: azure;
+        background-color: rgb(19, 216, 186);
+        display: block;
+        margin: 0 auto;
         } 
         </style>
    <script>
-    document.getElementById("login").innerHTML = "Sign up";
+    document.getElementById("login").innerHTML = "Enter";
 function openSite(url, target = '_blank', windowFeatures = '') {
 windows.open (url, target, windowFeatures);
 }
 
     </script>
+    <br><br>
+    <hr>
+    <br><br>
+<h3>Find posts from people near you</h3>
 
 
+<h5>How to usef?
+</h5>
+<h5>
+    <div id="steps-container">
+        <ul id="steps-list">
+            <li><strong>Step 1: </strong>Click the enter button.</li>
+        </ul>
+        <button id="next-step-btn">Next</button>
+    </div>
+    <script>
+    const steps = [
+        '<strong>Step 1:</strong> Click the "Enter" button to log in.',
+        '<strong>Step 2:</strong> Allow location access.',
+        '<strong>Step 3:</strong> Find posts within 500 meters',
+        '<strong>Step 4:</strong> Sign in with google for most functionaliy'
+    ];
+    let currentStep = 0;
+    const stepsList = document.getElementById('steps-list');
+    const nextBtn = document.getElementById('next-step-btn');
+
+    nextBtn.addEventListener('click', () => {
+        currentStep++;
+        if (currentStep < steps.length) {
+            stepsList.innerHTML = `<li>${steps[currentStep]}</li>`;
+            if (currentStep === steps.length - 1) {
+                nextBtn.textContent = 'Done';
+            }
+        } else {
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'All steps completed';
+        }
+    });
+    </script>
+    </h5>
+    <br><br>
+    <hr>
+    <br><br>
+    <p>Copyright Inlnx 2025</p>
+    <p>github.com/Inlnx</p>
 </body>
     </html>
