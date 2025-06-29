@@ -204,6 +204,9 @@
         .sidebar-button#profiles-btn {
             background-color: #ef4444; /* Red for profiles */
         }
+         .sidebar-button#enable-notifs-btn {
+            background-color: #f59e0b; /* Orange for notifications */
+        }
         .sidebar-button#google-auth-btn { /* Changed ID to reflect dual purpose */
             background-color: #fee9e9; /* White background for Google button */
             color: #333; 
@@ -341,6 +344,7 @@
             People 
             Nearby
         </button>
+        <button id="enable-notifs-btn" class="sidebar-button">Enable Notifs</button>
         <button id="google-auth-btn" class="sidebar-button">
             <span id="google-auth-text">Sign in with Google</span>
         </button>
@@ -350,7 +354,7 @@
         
         <div id="post-modal" class="hidden app-modal">
             <div class="app-modal-content">
-                <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
                 <h2 class="text-xl font-semibold text-gray-700 mb-4 text-center">Create Post</h2>
                 <textarea id="post-content" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-y" placeholder="What's on your mind?"></textarea>
                 <input type="url" id="post-link" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 mt-3" placeholder="Optional: Add a link (e.g., https://example.com)">
@@ -370,7 +374,7 @@
 
         <div id="ai-post-modal" class="hidden app-modal">
             <div class="app-modal-content">
-                <button id="close-ai-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                <button id="close-ai-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
                 <h2 class="text-xl font-semibold text-gray-700 mb-4 text-center">Generate Post with AI</h2>
                 <textarea id="ai-prompt-input" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200 resize-y" placeholder="Enter topic or prompt for AI (e.g., 'A beautiful sunset at the beach')"></textarea>
                 
@@ -386,10 +390,10 @@
                 </button>
             </div>
         </div>
-
+ 
         <div id="summary-modal" class="hidden app-modal">
             <div class="summary-modal-content">
-                <button id="close-summary-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                <button id="close-summary-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
                 <h2 class="text-xl font-semibold text-gray-700 mb-4 text-center">Post Summary</h2>
                 <div id="summary-content" class="summary-text text-gray-800"></div>
                 <div id="summary-loading-spinner" class="loading-spinner mt-2"></div>
@@ -398,7 +402,7 @@
 
         <div id="profiles-modal" class="hidden app-modal">
             <div class="app-modal-content">
-                <button id="close-profiles-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                <button id="close-profiles-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
                 <h2 class="text-xl font-semibold text-gray-700 mb-4 text-center">Other Profiles near you</h2>
                 <div id="profiles-list" class="profile-list-container">
                     <p class="text-gray-500 text-center">Loading...</p>
@@ -432,14 +436,14 @@
         const firebaseConfig = typeof __firebase_config !== 'undefined'
             ? JSON.parse(__firebase_config)
             : {
-              apiKey: "AIzaSyAE37qdlDBYSUhumSO6jTA985V81DN9iA8",
-  authDomain: "lowk-be8e0.firebaseapp.com",
-  projectId: "lowk-be8e0",
-  storageBucket: "lowk-be8e0.firebasestorage.app",
-  messagingSenderId: "244867743683",
-  appId: "1:244867743683:web:1b11ac7b94462ef5314776"
+                apiKey: "AIzaSyAE37qdlDBYSUhumSO6jTA985V81DN9iA8",
+                authDomain: "lowk-be8e0.firebaseapp.com",
+                projectId: "lowk-be8e0",
+                storageBucket: "lowk-be8e0.firebasestorage.app",
+                messagingSenderId: "244867743683",
+                appId: "1:244867743683:web:1b11ac7b94462ef5314776"
             };
-
+ 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -481,7 +485,8 @@
         const profilesModal = document.getElementById('profiles-modal');
         const closeProfilesModalBtn = document.getElementById('close-profiles-modal-btn');
         const profilesList = document.getElementById('profiles-list');
-
+        
+        const enableNotifsBtn = document.getElementById('enable-notifs-btn');
 
         const postsGrid = document.getElementById('posts-grid');
         const noPostsMessage = document.getElementById('no-posts-message');
@@ -494,18 +499,141 @@
         const generateHashtagsBtn = document.getElementById('generate-hashtags-btn');
         const hashtagLoadingSpinner = document.getElementById('hashtag-loading-spinner');
 
-        // Cache for user profiles to avoid repeated Firestore reads
+        
         const userProfilesCache = {};
 
-        // Function to show a custom message box
+        // --- PUSH NOTIFICATION SETUP ---
+
+        // IMPORTANT: Replace with your own VAPID public key.
+        // You can generate a new key pair by running `npx web-push generate-vapid-keys` in your terminal.
+        const VAPID_PUBLIC_KEY = ' BJZ63z2FfyPJsV9OpL1ptKpRggpgebhutvSwf_764SwYbCr9P69UV0sveQSVIZGkLA0Sb9vnhYr5AdeejkZQCf4 ';
+
+        // --- PUSH NOTIFICATION ARCHITECTURE NOTE  ---
+        // A true push notification system (sending notifications to users even when they're not on the site)
+        // requires a server-side component, like a Firebase Cloud Function. The flow would be:
+        // 1. Client (this app): Asks for permission, gets a unique push subscription token from the browser.
+        // 2. Client (this app): Sends this token to your server and stores it, associated with the user ID. (This part is implemented below, storing it in Firestore).
+        // 3. Backend (e.g., a Firebase Cloud Function): When a new post is created, this function would find nearby users, look up their tokens, and send a push message.
+        //
+        // Since this is a single client-side file, we SIMULATE this. The app listens for new posts in real-time
+        // and triggers a LOCAL notification on your own device if a new post appears nearby. The code is structured
+        // to be easily adapted to a real backend later.
+        // -------------------------------------------
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) {
+                console.warn("Service Workers not supported by this browser.");
+                return;
+            }
+
+            // In-line service worker code
+            const swCode = `
+                self.addEventListener('notificationclick', event => {
+                    event.notification.close();
+                    console.log('Notification clicked. URL to open:', event.notification.data.url);
+                    event.waitUntil(
+                        clients.openWindow(event.notification.data.url)
+                    );
+                });
+            `;
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(swBlob);
+
+            try {
+                const registration = await navigator.serviceWorker.register(swUrl);
+                console.log('Service Worker registered successfully:', registration);
+            } catch (error) {
+                console.error('Service Worker registration failed:', error);
+                showMessageBox("Could not set up notification service.");
+            }
+        }
+
+        async function subscribeUserToPush() {
+            if (VAPID_PUBLIC_KEY === 'YOUR_VAPID_PUBLIC_KEY_HERE') {
+                console.error("VAPID_PUBLIC_KEY is not set. Cannot subscribe for push notifications.");
+                showMessageBox("Notification setup is incomplete on this site. (VAPID key missing)");
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const existingSubscription = await registration.pushManager.getSubscription();
+                if (existingSubscription) {
+                    console.log('User is already subscribed.');
+                    showMessageBox('You are already subscribed to notifications.');
+                    return;
+                }
+
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+                
+                console.log('User subscribed successfully.');
+                await saveSubscription(subscription);
+
+            } catch (error) {
+                console.error('Failed to subscribe user:', error);
+                showMessageBox(`Failed to enable notifications: ${error.message}`);
+            }
+        }
+        
+        async function saveSubscription(subscription) {
+            if (!currentUserId || !db) {
+                showMessageBox("You must be signed in to enable notifications.");
+                return;
+            };
+            const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, currentUserId);
+            try {
+                // Convert subscription to a plain object for Firestore
+                const subscriptionObject = JSON.parse(JSON.stringify(subscription));
+                await setDoc(userDocRef, { pushSubscription: subscriptionObject }, { merge: true });
+                console.log("Push subscription saved for user:", currentUserId);
+                showMessageBox("Push notifications enabled! You'll be notified of new posts nearby.");
+            } catch (error) {
+                console.error("Failed to save push subscription:", error);
+                showMessageBox("Could not save your notification settings.");
+            }
+        }
+
+        enableNotifsBtn.addEventListener('click', async () => {
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                showMessageBox("Push notifications are not supported by your browser.");
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                console.log('Notification permission granted.');
+                await subscribeUserToPush();
+            } else {
+                showMessageBox("Notification permission was denied. You can change this in your browser settings.");
+            }
+        });
+
+
+        // --- END PUSH NOTIFICATION SETUP ---
+
+        
         function showMessageBox(message) {
             messageBoxContent.textContent = message;
             messageBox.classList.add('show');
         }
 
-        // Haversine formula to calculate distance between two lat/lon points in meters
+        
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // Earth's radius in metres
+            const R = 6371e3; // cool cow-culator
             const φ1 = lat1 * Math.PI / 180;
             const φ2 = lat2 * Math.PI / 180;
             const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -515,12 +643,11 @@
                       Math.cos(φ1) * Math.cos(φ2) *
                       Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-            const distance = R * c; // in metres
+ 
+            const distance = R * c; // in meters
             return distance;
         }
 
-        // Helper to extract domain from a URL for favicon
         function getDomainFromUrl(url) {
             try {
                 const hostname = new URL(url).hostname;
@@ -531,7 +658,6 @@
             }
         }
 
-        // Get user's current location using Geolocation API
         function getUserLocation() {
             return new Promise((resolve, reject) => {
                 locationLoadingSpinner.classList.add('show');
@@ -586,11 +712,10 @@
             });
         }
 
-        // Function to handle Google Sign-in
         async function handleGoogleSignIn() {
             const provider = new GoogleAuthProvider();
             try {
-                // Sign out any anonymous user first to prevent conflicts
+                
                 if (auth.currentUser && auth.currentUser.isAnonymous) {
                     await signOut(auth);
                     console.log("Signed out anonymous user before Google sign-in.");
@@ -600,7 +725,6 @@
                 const user = result.user;
                 console.log("Google Sign-in successful:", user);
 
-                // Save or update user profile in Firestore
                 const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, user.uid);
                 await setDoc(userDocRef, {
                     uid: user.uid,
@@ -608,7 +732,7 @@
                     photoURL: user.photoURL || '',
                     email: user.email || '',
                     lastSignInTime: Date.now()
-                }, { merge: true }); // Use merge to update existing fields without overwriting others
+                }, { merge: true });
                 showMessageBox(`Welcome, ${user.displayName || 'User'}!`);
 
             } catch (error) {
@@ -620,7 +744,6 @@
                 } else {
                     showMessageBox(`Google Sign-in failed: ${error.message}. Please try again.`);
                 }
-                // Fallback to anonymous sign-in if Google sign-in fails
                 if (!auth.currentUser) { 
                     await signInAnonymously(auth);
                     console.log("Signed in anonymously as fallback after Google sign-in attempt.");
@@ -628,13 +751,11 @@
             }
         }
 
-        // Function to handle Sign-out
         async function handleSignOut() {
             try {
                 await signOut(auth);
                 console.log("User signed out.");
                 showMessageBox("You have been signed out.");
-                // After signing out, sign in anonymously again to allow posting
                 await signInAnonymously(auth);
             } catch (error) {
                 console.error("Error signing out:", error);
@@ -642,9 +763,8 @@
             }
         }
 
-        // Function to update the Google Auth button based on auth state
         function updateGoogleAuthButton(user) {
-            if (user) {
+            if (user && !user.isAnonymous) {
                 googleAuthText.textContent = 'Sign Out';
                 googleAuthBtn.onclick = handleSignOut;
                 googleAuthBtn.classList.remove('bg-white', 'text-gray-800', 'border-gray-300'); // Remove Google Sign-in specific styling
@@ -686,25 +806,18 @@
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+                await registerServiceWorker(); // Register the service worker on startup
 
                 console.log("Firebase app initialized successfully.");
 
-                // onAuthStateChanged will now manage the button visibility and functionality
-                // So, no need to set googleAuthBtn.style.display here. It's 'flex' by default in CSS.
-
-                // If running in Canvas with initialAuthToken, try custom token sign-in first
                 if (initialAuthToken) {
                     try {
                         await signInWithCustomToken(auth, initialAuthToken);
                         console.log("Signed in with custom token (Canvas environment).");
                     } catch (tokenError) {
                         console.warn("Custom token sign-in failed, letting onAuthStateChanged handle it.", tokenError);
-                        // Do not attempt anonymous sign-in here. Let onAuthStateChanged resolve.
                     }
                 } else {
-                    // For local runs, immediately sign in anonymously if no user is present
-                    // This ensures there's always an authenticated user (even if anonymous)
-                    // unless a Google sign-in happens later.
                     if (!auth.currentUser) {
                         await signInAnonymously(auth);
                         console.log("Signed in anonymously (local/initial, no existing user).");
@@ -713,19 +826,18 @@
 
 
                 onAuthStateChanged(auth, async (user) => {
-                    updateGoogleAuthButton(user); // Update button based on current user state
+                    updateGoogleAuthButton(user); 
 
                     if (user) {
                         currentUserId = user.uid;
-                        // Fetch the actual user profile for display name and PFP
                         const profile = await getUserProfile(user.uid);
-                        currentUserDisplayName = profile.displayName || user.displayName || 'Guest';
+                        currentUserDisplayName = profile.displayName || user.displayName || (user.isAnonymous ? 'Guest' : 'User');
                         currentUserPhotoURL = profile.photoURL || user.photoURL || '';
 
-                        userIdValueDisplay.textContent = currentUserDisplayName; // Show display name
+                        userIdValueDisplay.textContent = currentUserDisplayName; 
                         console.log("Firebase user signed in:", currentUserId, "Name:", currentUserDisplayName);
                         getUserLocation().then(() => {
-                            setupPostListener(); // Only set up post listener after auth and location
+                            setupPostListener();
                         }).catch(err => console.error("Error getting location after auth:", err));
 
                     } else {
@@ -744,28 +856,47 @@
             }
         }
 
-        // Function to display posts in the UI (now with author's display name and PFP)
+        async function showLocalNotification(post) {
+            if (Notification.permission !== 'granted' || !('serviceWorker' in navigator)) {
+                return; // Don't show if permission not granted or SW not supported
+            }
+
+            try {
+                const authorProfile = await getUserProfile(post.userId);
+                const title = `New post from ${authorProfile.displayName || 'a user'}!`;
+                const body = post.text.length > 100 ? post.text.substring(0, 97) + '...' : post.text;
+                const icon = authorProfile.photoURL || 'https://placehold.co/192x192/cccccc/333333?text=🔔'; // Use profile pic as icon
+                const url = window.location.href; // URL to open on click
+
+                const registration = await navigator.serviceWorker.ready;
+                registration.showNotification(title, {
+                    body: body,
+                    icon: icon,
+                    badge: icon,
+                    data: { url: url } // Pass URL to the click handler in the service worker
+                });
+                console.log("Local notification shown for post:", post.id);
+            } catch (error) {
+                console.error("Error showing local notification:", error);
+            }
+        }
+
         function displayPosts(postsData) {
             postsGrid.innerHTML = ''; // Clear existing posts
             let foundNearby = false;
 
-            console.log(`Displaying posts. User location available: ${!!userLocation}. Total posts fetched: ${postsData.length}`); // Debug log
-
             if (!userLocation) {
                 noPostsMessage.textContent = "Your location is required to filter local posts. Please enable location services in your browser.";
                 noPostsMessage.style.display = 'block';
-                console.warn("Display Posts: User location not available, cannot filter posts."); // Debug log
                 return;
             }
             
             if (postsData.length === 0) {
                  noPostsMessage.textContent = "No posts found. Be the first to post!";
                  noPostsMessage.style.display = 'block';
-                 console.log("Display Posts: No posts fetched from Firestore at all.");
                  return;
             }
 
-            // Using for...of loop with async/await for better handling of async getUserProfile
             (async () => {
                 for (const post of postsData) { 
                     if (post.location && post.location.latitude && post.location.longitude) {
@@ -774,8 +905,6 @@
                             post.location.latitude, post.location.longitude
                         );
                         
-                        console.log(`Post ID: ${post.id}, Post Location: (${post.location.latitude}, ${post.location.longitude}), Distance: ${distance.toFixed(2)}m`);
-
                         if (distance <= 500) { // Within 500 meters
                             foundNearby = true;
                             const postSquare = document.createElement('div');
@@ -797,14 +926,11 @@
                                 `;
                             }
                             
-                            // Fetch author's profile for display
                             const authorProfile = await getUserProfile(post.userId);
                             const authorName = authorProfile.displayName || post.userId.substring(0, 5) + '...';
                             const authorPhoto = authorProfile.photoURL || 'https://placehold.co/32x32/cccccc/333333?text=👤';
 
-
                             const summarizeButton = `<button class="summarize-btn" data-post-text="${encodeURIComponent(post.text)}">✨ Summarize</button>`;
-
 
                             postSquare.innerHTML = `
                                 ${linkPreviewHtml}
@@ -820,39 +946,29 @@
                                 </div>
                             `;
                             postsGrid.appendChild(postSquare);
-                        } else {
-                            console.log(`Post ID: ${post.id} is too far away (${distance.toFixed(2)}m), skipping.`);
                         }
-                    } else {
-                        console.warn(`Post ID: ${post.id} is missing location data, skipping.`);
                     }
                 }
 
-                // After all posts are processed, check if any were found nearby
                 if (!foundNearby && postsData.length > 0) {
-                    noPostsMessage.textContent = "No posts found within 500 meters of your current location. Try posting one from your current spot!";
+                    noPostsMessage.textContent = "No posts found within 500 meters of your current location.";
                     noPostsMessage.style.display = 'block';
-                    console.log("Display Posts: No nearby posts found despite fetching some posts.");
                 } else if (foundNearby) {
                     noPostsMessage.style.display = 'none';
-                    console.log("Display Posts: Posts successfully displayed.");
                 }
 
-                // Attach event listeners after all posts are added to DOM
                 document.querySelectorAll('.summarize-btn').forEach(button => {
                     button.addEventListener('click', (event) => {
                         const postText = decodeURIComponent(event.target.dataset.postText);
                         showSummaryModal(postText);
                     });
                 });
-            })(); // Immediately invoke the async IIFE
+            })();
         }
 
-        // Set up real-time listener for posts from Firestore
         function setupPostListener() {
             if (!db) {
                 console.error("Firestore not initialized, cannot set up listener.");
-                showMessageBox("Database not ready. Cannot load posts. Check console.");
                 return;
             }
 
@@ -860,68 +976,52 @@
             console.log(`Setting up Firestore listener for path: artifacts/${appId}/public/data/posts`);
 
             onSnapshot(query(postsCollectionRef), (snapshot) => {
-                const posts = [];
-                snapshot.forEach(doc => {
-                    posts.push({ id: doc.id, ...doc.data() });
+                const allPosts = [];
+                snapshot.forEach(doc => allPosts.push({ id: doc.id, ...doc.data() }));
+
+                // Process changes for notifications
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === "added") {
+                        const newPost = { id: change.doc.id, ...change.doc.data() };
+                        // Trigger notification only for new posts from other users that are nearby
+                        if (newPost.userId !== currentUserId && userLocation && newPost.location) {
+                            const distance = calculateDistance(userLocation.latitude, userLocation.longitude, newPost.location.latitude, newPost.location.longitude);
+                            if (distance <= 500) {
+                                console.log("New nearby post detected, triggering local notification.");
+                                await showLocalNotification(newPost);
+                            }
+                        }
+                    }
                 });
-                posts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                console.log("Firestore Snapshot: Fetched posts:", posts);
-                displayPosts(posts);
+
+                // Sort and display all posts
+                allPosts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                displayPosts(allPosts);
+
             }, (error) => {
-                console.error("Error fetching posts:", error.code, error.message, error);
-                showMessageBox(`Failed to load posts: ${error.message}. Please check your Firestore security rules and network connection.`);
+                console.error("Error fetching posts:", error);
+                showMessageBox(`Failed to load posts: ${error.message}.`);
             });
         }
 
-        // Function to call Gemini API for hashtag generation
         async function generateHashtags() {
             const postContent = postContentInput.value.trim();
-
-            if (!postContent) {
-                showMessageBox("Please write some content in your post to generate hashtags.");
-                return;
-            }
+            if (!postContent) { showMessageBox("Please write some content first."); return; }
 
             hashtagLoadingSpinner.classList.add('show');
             generateHashtagsBtn.disabled = true;
 
             try {
-                const prompt = `You are a social media assistant. Generate 3-5 relevant and popular hashtags for the following social media post content. Provide only the hashtags, separated by spaces. Do not include any other text.
-Post: '${postContent}'`;
-
-                let chatHistory = [];
-                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                const payload = { contents: chatHistory };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
-                }
-
+                const prompt = `Generate 3-5 relevant and popular hashtags for the following post. Provide only the hashtags, separated by spaces. Post: '${postContent}'`;
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const apiKey = "AIzaSyC0iXmXyUU_rMXFLCF8T63_mUDIgzCl8Io"; // API KEY REMOVED
+                if (!apiKey) throw new Error("API key is not configured.");
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
                 const result = await response.json();
-
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const hashtags = result.candidates[0].content.parts[0].text.trim();
-                    if (hashtags) {
-                        postContentInput.value = postContentInput.value + "\n\n" + hashtags;
-                    } else {
-                        showMessageBox("No hashtags generated. Try rephrasing your post.");
-                    }
-                } else {
-                    showMessageBox("Could not generate hashtags. Unexpected API response.");
-                    console.error("Unexpected API response structure:", result);
-                }
-
+                const hashtags = result.candidates[0].content.parts[0].text.trim();
+                postContentInput.value += "\n\n" + hashtags;
             } catch (error) {
                 console.error("Error generating hashtags:", error);
                 showMessageBox(`Failed to generate hashtags: ${error.message}.`);
@@ -931,51 +1031,22 @@ Post: '${postContent}'`;
             }
         }
 
-        // Function to call Gemini API for generating a full post
         async function generateAIPost() {
             const aiPrompt = aiPromptInput.value.trim();
-
-            if (!aiPrompt) {
-                showMessageBox("Please enter a topic or prompt for the AI to generate a post.");
-                return;
-            }
-
+            if (!aiPrompt) { showMessageBox("Please enter a topic for the AI."); return; }
             aiPostLoadingSpinner.classList.add('show');
             generateAiPostBtn.disabled = true;
 
             try {
-                const prompt = `Write a short, engaging social media post (around 50-100 words) about the following topic. Do not include hashtags in your response.
-Topic: '${aiPrompt}'`;
-
-                let chatHistory = [];
-                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                const payload = { contents: chatHistory };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
-                }
-
+                const prompt = `Write a short, engaging social media post (50-100 words) about: '${aiPrompt}'. Do not include hashtags.`;
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const apiKey = "AIzaSyC0iXmXyUU_rMXFLCF8T63_mUDIgzCl8Io"; // API KEY REMOVED
+                if (!apiKey) throw new Error("API key is not configured.");
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
                 const result = await response.json();
-
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const generatedText = result.candidates[0].content.parts[0].text.trim();
-                    aiGeneratedContent.value = generatedText;
-                } else {
-                    showMessageBox("Could not generate post. Unexpected API response.");
-                    console.error("Unexpected API response structure:", result);
-                }
-
+                aiGeneratedContent.value = result.candidates[0].content.parts[0].text.trim();
             } catch (error) {
                 console.error("Error generating AI post:", error);
                 showMessageBox(`Failed to generate post: ${error.message}.`);
@@ -985,45 +1056,21 @@ Topic: '${aiPrompt}'`;
             }
         }
 
-        // Function to call Gemini API to summarize a post
         async function generatePostSummary(postText) {
             summaryModal.classList.remove('hidden');
             summaryContent.textContent = 'Generating summary...';
             summaryLoadingSpinner.classList.add('show');
 
             try {
-                const prompt = `Summarize the following social media post in 1-2 concise sentences.
-Post: '${postText}'`;
-
-                let chatHistory = [];
-                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                const payload = { contents: chatHistory };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
-                }
-
+                const prompt = `Summarize the following post in 1-2 concise sentences: '${postText}'`;
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const apiKey = "AIzaSyC0iXmXyUU_rMXFLCF8T63_mUDIgzCl8Io"; // API KEY REMOVED
+                if (!apiKey) throw new Error("API key is not configured.");
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
                 const result = await response.json();
-
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const summary = result.candidates[0].content.parts[0].text.trim();
-                    summaryContent.textContent = summary;
-                } else {
-                    showMessageBox("Could not generate summary. Unexpected API response.");
-                    console.error("Unexpected API response structure:", result);
-                }
-
+                summaryContent.textContent = result.candidates[0].content.parts[0].text.trim();
             } catch (error) {
                 summaryContent.textContent = `Failed to generate summary: ${error.message}.`;
                 console.error("Error generating summary:", error);
@@ -1032,155 +1079,88 @@ Post: '${postText}'`;
             }
         }
 
-        // Function to show the summary modal
-        function showSummaryModal(postText) {
-            generatePostSummary(postText);
-        }
+        function showSummaryModal(postText) { generatePostSummary(postText); }
 
-        // Function to fetch and display unique user profiles
         async function fetchAndDisplayUserProfiles() {
-            profilesList.innerHTML = '<p class="text-gray-500 text-center">Loading user profiles...</p>';
+            profilesList.innerHTML = '<p class="text-gray-500 text-center">Loading...</p>';
             try {
-                if (!db) {
-                    console.error("Firestore not initialized for profiles.");
-                    profilesList.innerHTML = '<p class="text-red-500 text-center">Error: Database not ready.</p>';
-                    return;
-                }
-
+                if (!db) throw new Error("Database not ready.");
                 const usersCollectionRef = collection(db, `artifacts/${appId}/public/data/users`);
                 const querySnapshot = await getDocs(query(usersCollectionRef));
-                
-                profilesList.innerHTML = ''; // Clear loading message
-
+                profilesList.innerHTML = '';
                 if (querySnapshot.empty) {
-                    profilesList.innerHTML = '<p class="text-gray-500 text-center">No user profiles found yet. Sign in with Google to add yours!</p>';
+                    profilesList.innerHTML = '<p class="text-center">No user profiles yet.</p>';
                 } else {
                     querySnapshot.forEach(doc => {
                         const userData = doc.data();
+                        if (userData.isAnonymous) return; // Don't show anonymous users
                         const profileItem = document.createElement('div');
                         profileItem.className = 'profile-item';
                         profileItem.innerHTML = `
-                            <img src="${userData.photoURL || 'https://placehold.co/32x32/cccccc/333333?text=👤'}" class="w-8 h-8 rounded-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/32x32/cccccc/333333?text=👤';" alt="Profile Picture">
-                            <span class="font-medium">${userData.displayName || userData.uid.substring(0, 10) + '...'}</span>
+                            <img src="${userData.photoURL || 'https://placehold.co/32x32/cccccc/333333?text=👤'}" class="w-8 h-8 rounded-full object-cover" alt="PFP">
+                            <span class="font-medium">${userData.displayName || 'User'}</span>
                         `;
                         profilesList.appendChild(profileItem);
-                        userProfilesCache[userData.uid] = userData; // Cache the profile
+                        userProfilesCache[userData.uid] = userData;
                     });
                 }
-
             } catch (error) {
                 console.error("Error fetching user profiles:", error);
                 profilesList.innerHTML = `<p class="text-red-500 text-center">Failed to load profiles: ${error.message}.</p>`;
-                showMessageBox(`Failed to load user profiles: ${error.message}`);
             }
         }
 
-
-        // Event listener for the Post button
         postButton.addEventListener('click', async () => {
             const postContent = postContentInput.value.trim();
             const postLink = postLinkInput.value.trim();
 
-            if (!postContent && !postLink) {
-                showMessageBox("Post content or a link must be provided.");
-                return;
-            }
-            if (!currentUserId) {
-                showMessageBox("You must be signed in to post. Please sign in with Google.");
-                return;
-            }
+            if (!postContent && !postLink) { showMessageBox("Post content or a link must be provided."); return; }
+            if (!currentUserId) { showMessageBox("You must be signed in to post."); return; }
             if (!userLocation) {
-                showMessageBox("Your location is still being determined or could not be found. Please wait or ensure location services are enabled.");
+                showMessageBox("Location not found. Please wait or enable location services.");
                 await getUserLocation();
-                if (!userLocation) {
-                    showMessageBox("Could not get your location. Post cancelled.");
-                    return;
-                }
+                if (!userLocation) { showMessageBox("Could not get location. Post cancelled."); return; }
             }
 
             try {
-                const postData = {
-                    userId: currentUserId,
-                    text: postContent,
-                    timestamp: Date.now(),
-                    location: userLocation
-                };
-
-                if (postLink) {
-                    postData.linkUrl = postLink;
-                }
-
+                const postData = { userId: currentUserId, text: postContent, timestamp: Date.now(), location: userLocation };
+                if (postLink) postData.linkUrl = postLink;
                 await addDoc(collection(db, `artifacts/${appId}/public/data/posts`), postData);
                 postContentInput.value = '';
                 postLinkInput.value = '';
                 postModal.classList.add('hidden');
             } catch (error) {
-                console.error("Error adding document: ", error.code, error.message, error);
-                showMessageBox(`Failed to add post: ${error.message}. Check Firestore permissions.`);
+                console.error("Error adding document: ", error);
+                showMessageBox(`Failed to add post: ${error.message}.`);
             }
         });
 
-        // Event listeners for post creation modal toggle
         addPostBtn.addEventListener('click', () => {
             postModal.classList.remove('hidden');
-            locationStatus.textContent = 'Getting location for post...';
+            locationStatus.textContent = 'Getting location...';
             locationLoadingSpinner.classList.add('show');
             getUserLocation();
         });
-        closeModalBtn.addEventListener('click', () => {
-            postModal.classList.add('hidden');
-            postContentInput.value = '';
-            postLinkInput.value = '';
-        });
-
-        // Event listener for the new Generate Hashtags button
+        closeModalBtn.addEventListener('click', () => postModal.classList.add('hidden'));
         generateHashtagsBtn.addEventListener('click', generateHashtags);
-
-        // Event listener for the AI Post button
-        aiPostBtn.addEventListener('click', () => {
-            aiPostModal.classList.remove('hidden');
-            aiPromptInput.value = '';
-            aiGeneratedContent.value = '';
-        });
-        // Event listener for closing AI Post modal
-        closeAiModalBtn.addEventListener('click', () => {
-            aiPostModal.classList.add('hidden');
-        });
-        // Event listener for generating AI post
+        aiPostBtn.addEventListener('click', () => aiPostModal.classList.remove('hidden'));
+        closeAiModalBtn.addEventListener('click', () => aiPostModal.classList.add('hidden'));
         generateAiPostBtn.addEventListener('click', generateAIPost);
-        // Event listener for using AI generated post
         useAiPostBtn.addEventListener('click', () => {
             if (aiGeneratedContent.value.trim()) {
                 postContentInput.value = aiGeneratedContent.value.trim();
                 aiPostModal.classList.add('hidden');
                 postModal.classList.remove('hidden');
                 postLinkInput.value = '';
-            } else {
-                showMessageBox("No AI post generated to use.");
-            }
+            } else { showMessageBox("No AI post generated to use."); }
         });
-
-        // Event listener for closing Summary modal
-        closeSummaryModalBtn.addEventListener('click', () => {
-            summaryModal.classList.add('hidden');
-            summaryContent.textContent = ''; // Clear content for next time
-        });
-
-        // Event listener for the new Profiles button
+        closeSummaryModalBtn.addEventListener('click', () => summaryModal.classList.add('hidden'));
         profilesBtn.addEventListener('click', () => {
             profilesModal.classList.remove('hidden');
-            fetchAndDisplayUserProfiles(); // Fetch and display profiles when modal opens
+            fetchAndDisplayUserProfiles();
         });
-        // Event listener for closing Profiles modal
-        closeProfilesModalBtn.addEventListener('click', () => {
-            profilesModal.classList.add('hidden');
-        });
-
-        // Initial setup for the Google Auth button (assigned in onAuthStateChanged)
-        // googleAuthBtn.addEventListener('click', signInWithGoogle); // Removed this initial static listener
-        // The click handler will be dynamically assigned by updateGoogleAuthButton
-
-        // Initialize the app when the page loads
+        closeProfilesModalBtn.addEventListener('click', () => profilesModal.classList.add('hidden'));
+        
         initializeFirebase();
     </script>
 </body>
