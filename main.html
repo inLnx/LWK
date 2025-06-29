@@ -257,7 +257,7 @@
             text-align: left;
         }
         .profile-list-container {
-            max-height: 400px; /* Limit height for scrollability */
+            max-height: 400px; 
             overflow-y: auto;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
@@ -1016,7 +1016,7 @@
                 const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
                 const apiKey = "AIzaSyC0iXmXyUU_rMXFLCF8T63_mUDIgzCl8Io"; // API KEY REMOVED
                 if (!apiKey) throw new Error("API key is not configured.");
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 const result = await response.json();
@@ -1042,7 +1042,7 @@
                 const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
                 const apiKey = "AIzaSyC0iXmXyUU_rMXFLCF8T63_mUDIgzCl8Io"; // API KEY REMOVED
                 if (!apiKey) throw new Error("API key is not configured.");
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 const result = await response.json();
@@ -1066,7 +1066,7 @@
                 const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
                 const apiKey = "AIzaSyC0iXmXyUU_rMXFLCF8T63_mUDIgzCl8Io"; // API KEY REMOVED
                 if (!apiKey) throw new Error("API key is not configured.");
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 const result = await response.json();
