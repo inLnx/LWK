@@ -113,6 +113,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         let app, db, auth, currentUserId = null, userLocation = null, mainFeedUnsubscribe = null;
         const userProfilesCache = {};
+        const VISIBILITY_RADIUS_METERS = 8047; // Approx. 5 miles
 
         const themeManager = {
             init() { this.applyTheme(localStorage.getItem('theme') || 'dark'); },
@@ -176,7 +177,8 @@
             page.innerHTML = `<div class="page-header">Home</div>
                 <div class="flex p-4 border-b border-[var(--border-color)]">
                     <img id="composer-pfp" class="w-12 h-12 rounded-full mr-4" src="${userProfilesCache[currentUserId]?.photoURL || 'https://placehold.co/48x48/15202B/8899A6?text=👤'}">
-                    <div class="flex-grow"><textarea id="post-composer-textarea" class="styled-textarea" placeholder="What's happening?"></textarea>
+                    <div class="flex-grow">
+                        <textarea id="post-composer-textarea" class="styled-textarea" placeholder="What's happening?"></textarea>
                         <div class="border-t border-[var(--border-color)] pt-2 mt-2">
                              <input type="url" id="post-link-composer" class="styled-input text-sm" placeholder="Optional: Add a link">
                              <input type="text" id="post-location-composer" class="styled-input text-sm" placeholder="Optional: Tag a location">
@@ -184,7 +186,7 @@
                         <div class="flex justify-end items-center mt-2"><button id="composer-post-btn" class="composer-button-post">Post</button></div>
                     </div>
                 </div>
-                <div id="posts-container"></div><p id="no-posts-message" class="text-center p-8 text-gray-500">No posts nearby</p>`;
+                <div id="posts-container"></div><p id="no-posts-message" class="text-center p-8 text-gray-500">No posts found within 5 miles</p>`;
             const postBtn = page.querySelector('#composer-post-btn');
             page.querySelector('#post-composer-textarea').addEventListener('input', e => { postBtn.classList.toggle('enabled', e.target.value.trim().length > 0); });
             postBtn.addEventListener('click', () => { if(postBtn.classList.contains('enabled')) handlePostSubmit(); });
@@ -274,7 +276,23 @@
             });
         }
         
-        async function handlePostSubmit() { /* ... unchanged ... */ }
+        async function handlePostSubmit() {
+            const text = document.getElementById('post-composer-textarea').value.trim();
+            if (!text || !currentUserId || !userLocation) { alert("Cannot post. Ensure you are signed in and location is enabled."); return; }
+            const postBtn = document.getElementById('composer-post-btn');
+            postBtn.disabled = true; postBtn.textContent = 'Posting...';
+            try {
+                const customLocation = document.getElementById('post-location-composer').value.trim() ? await geocodeLocation(document.getElementById('post-location-composer').value.trim()) : null;
+                const postData = { userId: currentUserId, text, timestamp: Date.now(), location: userLocation, likeCount: 0, likes: [] };
+                if (document.getElementById('post-link-composer').value.trim()) postData.linkUrl = document.getElementById('post-link-composer').value.trim();
+                if (customLocation) postData.customLocation = customLocation;
+                await addDoc(collection(db, `artifacts/${appId}/public/data/posts`), postData);
+                document.getElementById('post-composer-textarea').value = ''; document.getElementById('post-link-composer').value = ''; document.getElementById('post-location-composer').value = '';
+                document.getElementById('post-composer-textarea').dispatchEvent(new Event('input'));
+            } catch (error) { alert(`Failed to post: ${error.message}`); } 
+            finally { postBtn.disabled = false; postBtn.textContent = 'Post'; }
+        }
+
         async function handleAiGenerate() {
             const promptInput = document.getElementById('ai-prompt-input'); const promptText = promptInput.value.trim(); if(!promptText) return;
             if (currentUserId) await addDoc(collection(db, `users/${currentUserId}/prompts`), { text: promptText, timestamp: new Date() });
@@ -283,15 +301,17 @@
 
         function setupMainFeedListener() {
             if (mainFeedUnsubscribe) mainFeedUnsubscribe();
-            if (!userLocation) { document.getElementById('no-posts-message').textContent = "Location not available."; return; }
+            const noPostsMessage = document.getElementById('no-posts-message');
+            if (!userLocation) { if (noPostsMessage) noPostsMessage.textContent = "Location not available. Please enable it to see posts."; return; }
             const postsQuery = query(collection(db, `artifacts/${appId}/public/data/posts`), orderBy("timestamp", "desc"));
             mainFeedUnsubscribe = onSnapshot(postsQuery, async (snapshot) => {
                 const postsContainer = document.getElementById('posts-container');
                 const noPostsMessage = document.getElementById('no-posts-message');
-                if (!postsContainer || !noPostsMessage) return; // Page not active
+                if (!postsContainer || !noPostsMessage) return;
                 const allPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const nearbyPosts = allPosts.filter(post => post.location && calculateDistance(userLocation.latitude, userLocation.longitude, post.location.latitude, post.location.longitude) <= 500);
-                postsContainer.innerHTML = ''; noPostsMessage.style.display = nearbyPosts.length > 0 ? 'none' : 'block';
+                const nearbyPosts = allPosts.filter(post => post.location && calculateDistance(userLocation.latitude, userLocation.longitude, post.location.latitude, post.location.longitude) <= VISIBILITY_RADIUS_METERS);
+                postsContainer.innerHTML = '';
+                noPostsMessage.style.display = nearbyPosts.length > 0 ? 'none' : 'block';
                 if (nearbyPosts.length === 0) return;
                 const userIds = [...new Set(nearbyPosts.map(p => p.userId))];
                 await Promise.all(userIds.map(id => getUserProfile(id)));
@@ -313,7 +333,7 @@
             if (targetPage) {
                 targetPage.classList.add('active');
                 switch(pageId) {
-                    case '#home': renderHomePage(); setupMainFeedListener(); if (sessionStorage.getItem('prefillPost')) { document.getElementById('post-composer-textarea').value = sessionStorage.getItem('prefillPost'); sessionStorage.removeItem('prefillPost'); } break;
+                    case '#home': renderHomePage(); setupMainFeedListener(); if (sessionStorage.getItem('prefillPost')) { document.getElementById('post-composer-textarea').value = sessionStorage.getItem('prefillPost'); sessionStorage.removeItem('prefillPost'); document.getElementById('post-composer-textarea').dispatchEvent(new Event('input')); } break;
                     case '#ai-post': renderAiPage(); if (sessionStorage.getItem('prefillAiPrompt')) { document.getElementById('ai-prompt-input').value = sessionStorage.getItem('prefillAiPrompt'); sessionStorage.removeItem('prefillAiPrompt'); } break;
                     case '#profiles': fetchAndDisplayProfiles(); break;
                     case '#settings': renderSettingsPage(); break;
