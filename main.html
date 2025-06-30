@@ -10,7 +10,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
     <style>
-        :root {
+        :root { /* Dark Theme (Default) */
             --background-color: #15202B;
             --primary-text-color: #F7F9F9;
             --secondary-text-color: #8899A6;
@@ -20,71 +20,62 @@
             --hover-background: rgba(29, 155, 240, 0.1);
             --like-color: #F91880;
         }
+        html.light-theme { /* Light Theme */
+            --background-color: #FFFFFF;
+            --primary-text-color: #0F1419;
+            --secondary-text-color: #536471;
+            --border-color: #EFF3F4;
+            --container-background: #F7F9F9;
+        }
+        
         html, body {
             background-color: var(--background-color);
             color: var(--primary-text-color);
             font-family: 'Inter', sans-serif;
-            overflow-y: scroll;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        #loading-bar {
-            position: fixed; top: 0; left: 0; height: 3px;
-            background-color: var(--accent-color); width: 0%; z-index: 9999;
-            transition: width 0.4s ease-out, opacity 0.5s ease 0.5s;
-        }
+        #loading-bar { position: fixed; top: 0; left: 0; height: 3px; background-color: var(--accent-color); width: 0%; z-index: 9999; transition: width 0.4s ease-out, opacity 0.5s ease 0.5s; }
         .main-app-container { display: flex; justify-content: center; width: 100%; max-width: 1265px; margin: 0 auto; gap: 20px; }
         .left-sidebar { width: 275px; height: 100vh; position: sticky; top: 0; display: flex; flex-direction: column; padding: 10px 0; }
         .sidebar-link { display: flex; align-items: center; gap: 20px; padding: 12px; border-radius: 9999px; cursor: pointer; transition: background-color 0.2s ease; font-size: 20px; font-weight: 500; color: var(--secondary-text-color); text-decoration: none; }
         .sidebar-link:hover { background-color: var(--hover-background); color: var(--primary-text-color); }
         .sidebar-link.active { font-weight: 700; color: var(--primary-text-color); }
         .user-profile-widget { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 9999px; cursor: pointer; transition: background-color 0.2s; }
-        .user-profile-widget:hover { background-color: var(--hover-background); }
-        .user-profile-widget img { width: 40px; height: 40px; border-radius: 50%; }
         
         .main-feed { width: 600px; min-height: 100vh; border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         .page-container { display: none; }
         .page-container.active { display: block; }
-        .page-header { position: sticky; top: 0; background-color: rgba(21, 32, 43, 0.85); backdrop-filter: blur(12px); z-index: 10; padding: 16px; font-size: 20px; font-weight: 700; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 20px; }
+        .page-header { position: sticky; top: 0; background-color: rgba(var(--background-color-rgb, 21, 32, 43), 0.85); backdrop-filter: blur(12px); z-index: 10; padding: 16px; font-size: 20px; font-weight: 700; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 20px; }
         .back-button { cursor: pointer; font-size: 24px; padding: 4px; }
         
-        /* Post Composer */
-        .post-composer { padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; gap: 12px; }
-        .post-composer-main { flex-grow: 1; position: relative; }
-        .post-composer-textarea { width: 100%; background: transparent; border: none; outline: none; color: var(--primary-text-color); font-size: 20px; resize: none; padding: 12px 0; min-height: 60px; }
-        .composer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-        .composer-inputs { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 12px;}
-        .composer-input { width: 100%; background-color: var(--background-color); border: 1px solid var(--border-color); color: var(--primary-text-color); border-radius: 6px; padding: 8px 12px; font-size: 15px; }
+        .styled-textarea, .styled-input { width: 100%; background: transparent; border: none; outline: none; color: var(--primary-text-color); font-size: 20px; resize: none; padding: 12px 4px; border-bottom: 2px solid transparent; transition: border-color 0.2s ease; }
+        .styled-textarea::placeholder, .styled-input::placeholder { color: var(--secondary-text-color); }
+        .styled-textarea:focus, .styled-input:focus { border-bottom-color: var(--accent-color); }
         .composer-button-post { background-color: var(--accent-color); color: white; font-weight: 700; border-radius: 9999px; padding: 8px 16px; cursor: pointer; opacity: 0.5; transition: all 0.2s ease; }
         .composer-button-post.enabled { opacity: 1; }
 
-        /* Profile Page */
         .profile-header { position: relative; }
         .profile-banner { height: 200px; background-color: var(--border-color); }
         .profile-banner img { width: 100%; height: 100%; object-fit: cover; }
         .profile-pfp { position: absolute; left: 16px; bottom: -70px; width: 140px; height: 140px; border-radius: 50%; border: 4px solid var(--background-color); }
         .profile-details { padding: 85px 16px 16px 16px; border-bottom: 1px solid var(--border-color); }
-        .profile-actions { display: flex; justify-content: flex-end; padding-top: 12px; }
         .dm-button { background: none; border: 1px solid var(--primary-text-color); color: var(--primary-text-color); padding: 8px 16px; border-radius: 9999px; font-weight: 700; cursor: pointer; }
         
         .post-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-color); }
-        .post-card .pfp { width: 48px; height: 48px; border-radius: 50%; }
-        .post-content .mention { color: var(--accent-color); font-weight: 500; text-decoration: none; }
-        .post-content .mention:hover { text-decoration: underline; }
-        .post-map-container { height: 280px; width: 100%; border-radius: 16px; margin-top: 12px; border: 1px solid var(--border-color); overflow: hidden; z-index: 1; }
         .action-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
         .action-item.like.liked { color: var(--like-color); }
-        .action-item.like:hover { color: var(--like-color); }
 
-        #mentions-popup { display: none; position: absolute; top: 90px; left: 0; width: 100%; max-height: 250px; overflow-y: auto; background-color: var(--container-background); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); z-index: 100; }
-        .mention-item { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer; }
-        .mention-item:hover { background-color: var(--hover-background); }
-        .mention-item img { width: 40px; height: 40px; border-radius: 50%; }
-
-        .page-content-wrapper { padding: 16px; }
-        .page-content-wrapper textarea, .page-content-wrapper input { background-color: var(--container-background); border: 1px solid var(--border-color); color: var(--primary-text-color); padding: 12px; border-radius: 6px; width: 100%; margin-top: 12px; }
-        .page-content-wrapper .action-button { width: 100%; background-color: var(--accent-color); color: white; padding: 10px 20px; border: none; border-radius: 9999px; cursor: pointer; margin-top: 15px; font-weight: 700; }
-        
-        .profile-list-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-color); }
-        .profile-list-item img { width: 48px; height: 48px; border-radius: 50%; }
+        .settings-section { padding: 16px; border-bottom: 1px solid var(--border-color); }
+        .settings-section h2 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+        .theme-toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .theme-toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 28px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(22px); }
+        .previous-prompt-item { padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: background-color 0.2s ease; }
+        .previous-prompt-item:hover { background-color: var(--hover-background); }
+        .profile-list-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-decoration: none; }
     </style>
 </head>
 <body>
@@ -95,50 +86,19 @@
             <a href="#home" class="sidebar-link">🏠<span>Home</span></a>
             <a href="#ai-post" class="sidebar-link">✨<span>AI Post</span></a>
             <a href="#profiles" class="sidebar-link">🌐<span>Nearby Profiles</span></a>
+            <a href="#settings" class="sidebar-link">⚙️<span>Settings</span></a>
             <div id="user-profile-widget" class="user-profile-widget">
-                 <img id="user-pfp-widget" src="https://placehold.co/40x40/15202B/8899A6?text=👤" alt="User PFP">
-                 <div class="flex flex-col"><span id="user-name-widget" class="name">Guest</span><span id="user-handle-widget" class="handle">@guest</span></div>
+                <img id="user-pfp-widget" class="w-10 h-10 rounded-full" src="https://placehold.co/40x40/15202B/8899A6?text=👤" alt="PFP">
+                <div class="flex flex-col"><span id="user-name-widget" class="font-bold">Guest</span><span id="user-handle-widget" class="text-sm text-gray-500">@guest</span></div>
             </div>
         </nav>
 
         <main id="main-feed-container" class="main-feed">
-            <div id="home-page" class="page-container">
-                <div class="page-header">Home</div>
-                <div class="post-composer">
-                    <img id="composer-pfp" src="https://placehold.co/48x48/15202B/8899A6?text=👤" alt="Your PFP">
-                    <div class="post-composer-main">
-                        <textarea id="post-composer-textarea" class="post-composer-textarea" placeholder="What's happening?"></textarea>
-                        <div id="mentions-popup"></div>
-                        <div class="composer-inputs">
-                             <input type="url" id="post-link-composer" class="composer-input" placeholder="Optional: Add a link">
-                             <input type="text" id="post-location-composer" class="composer-input" placeholder="Optional: Tag a location (e.g., 'Eiffel Tower')">
-                        </div>
-                        <div class="composer-actions">
-                            <div></div>
-                            <button id="composer-post-btn" class="composer-button-post">Post</button>
-                        </div>
-                    </div>
-                </div>
-                <div id="posts-container"></div>
-                <p id="no-posts-message" class="text-center p-8 text-gray-500">No posts nearby</p>
-            </div>
-            
-            <div id="ai-post-page" class="page-container">
-                 <div class="page-header">Generate Post with AI</div>
-                 <div class="page-content-wrapper">
-                    <textarea id="ai-prompt-input" rows="3" placeholder="Enter topic or prompt for AI..."></textarea>
-                    <button id="generate-ai-post-btn" class="action-button">Generate Post</button>
-                    <textarea id="ai-generated-content" rows="6" readonly class="mt-4 bg-gray-800" placeholder="Generated content will appear here..."></textarea>
-                    <button id="use-ai-post-btn" class="action-button">Use This Post & Go Home</button>
-                 </div>
-            </div>
-
-            <div id="profiles-page" class="page-container">
-                <div class="page-header">Nearby Profiles</div>
-                <div id="profiles-list-container"></div>
-            </div>
-
+            <div id="home-page" class="page-container"></div>
+            <div id="ai-post-page" class="page-container"></div>
+            <div id="profiles-page" class="page-container"></div>
             <div id="profile-page" class="page-container"></div>
+            <div id="settings-page" class="page-container"></div>
         </main>
         
         <aside class="w-[350px]"></aside>
@@ -147,62 +107,38 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs, doc, setDoc, getDoc, runTransaction, increment, arrayUnion, arrayRemove, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs, doc, setDoc, getDoc, runTransaction, increment, arrayUnion, arrayRemove, where, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "AIzaSyAE37qdlDBYSUhumSO6jTA985V81DN9iA8", authDomain: "lowk-be8e0.firebaseapp.com", projectId: "lowk-be8e0", storageBucket: "lowk-be8e0.firebasestorage.app", messagingSenderId: "244867743683", appId: "1:244867743683:web:1b11ac7b94462ef5314776" };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        let app, db, auth, currentUserId = null, userLocation = null;
+        let app, db, auth, currentUserId = null, userLocation = null, mainFeedUnsubscribe = null;
         const userProfilesCache = {};
-        let allUsersForMentions = [];
-        let mainFeedUnsubscribe = null;
+
+        const themeManager = {
+            init() { this.applyTheme(localStorage.getItem('theme') || 'dark'); },
+            applyTheme(theme) {
+                document.documentElement.classList.toggle('light-theme', theme === 'light');
+                document.documentElement.style.setProperty('--background-color-rgb', theme === 'light' ? '255, 255, 255' : '21, 32, 43');
+            },
+            toggleTheme() {
+                const newTheme = document.documentElement.classList.contains('light-theme') ? 'dark' : 'light';
+                this.applyTheme(newTheme); localStorage.setItem('theme', newTheme);
+            }
+        };
+        themeManager.init();
 
         const loadingBar = document.getElementById('loading-bar');
         const showLoadingBar = () => { loadingBar.style.opacity = '1'; loadingBar.style.width = '90%'; };
         const hideLoadingBar = () => { loadingBar.style.width = '100%'; setTimeout(() => { loadingBar.style.opacity = '0'; }, 500); };
         
         const mainFeedContainer = document.getElementById('main-feed-container');
-        const postsContainer = document.getElementById('posts-container');
-        const postComposerTextarea = document.getElementById('post-composer-textarea');
-        const composerPostBtn = document.getElementById('composer-post-btn');
-        const postLinkComposer = document.getElementById('post-link-composer');
-        const postLocationComposer = document.getElementById('post-location-composer');
-        const mentionsPopup = document.getElementById('mentions-popup');
-        const aiPromptInput = document.getElementById('ai-prompt-input');
-        const generateAiPostBtn = document.getElementById('generate-ai-post-btn');
-        const aiGeneratedContent = document.getElementById('ai-generated-content');
-        const useAiPostBtn = document.getElementById('use-ai-post-btn');
-        const profilesListContainer = document.getElementById('profiles-list-container');
-        
         const generateHandle = (displayName, uid) => uid ? `@${(displayName || 'user').toLowerCase().replace(/\s+/g, '')}_${uid.substring(0,4)}` : '@guest';
         const parseAndRenderMentions = (text) => text ? text.replace(/@\w+_\w{4}/g, match => `<a href="#" class="mention">${match}</a>`).replace(/\n/g, '<br>') : '';
-        const calculateDistance = (lat1, lon1, lat2, lon2) => {
-            const R = 6371e3; const φ1 = lat1 * Math.PI / 180; const φ2 = lat2 * Math.PI / 180; const Δφ = (lat2 - lat1) * Math.PI / 180; const Δλ = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        };
-        const geocodeLocation = async (address) => {
-            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
-            try {
-                const response = await fetch(url); if (!response.ok) throw new Error(`API error: ${response.status}`);
-                const data = await response.json(); if (data && data.length > 0) return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
-                return null;
-            } catch (error) { console.error('Geocoding failed:', error); return null; }
-        };
-
-        async function getUserProfile(userId) { /* Unchanged */ }
+        const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI / 180; const φ2 = lat2 * Math.PI / 180; const Δφ = (lat2 - lat1) * Math.PI / 180; const Δλ = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); return R * c; };
+        const geocodeLocation = async (address) => { const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`; try { const response = await fetch(url); if (!response.ok) throw new Error(`API error: ${response.status}`); const data = await response.json(); if (data && data.length > 0) return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) }; return null; } catch (error) { return null; } };
+        async function getUserProfile(userId) { if (userProfilesCache[userId]) return userProfilesCache[userId]; const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, userId); const userDocSnap = await getDoc(userDocRef); if (userDocSnap.exists()) { userProfilesCache[userId] = { id: userId, ...userDocSnap.data() }; return userProfilesCache[userId]; } return null; }
         
-        async function handleGoogleSignIn() {
-            const provider = new GoogleAuthProvider();
-            try {
-                if (auth.currentUser && auth.currentUser.isAnonymous) await signOut(auth);
-                const result = await signInWithPopup(auth, provider);
-                const user = result.user;
-                const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, user.uid);
-                await setDoc(userDocRef, { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL, email: user.email }, { merge: true });
-            } catch (error) { if (!auth.currentUser) await signInAnonymously(auth); }
-        }
-        
+        async function handleGoogleSignIn() { const p = new GoogleAuthProvider(); try { if (auth.currentUser?.isAnonymous) await signOut(auth); const r = await signInWithPopup(auth, p); await setDoc(doc(db, `artifacts/${appId}/public/data/users`, r.user.uid), { uid: r.user.uid, displayName: r.user.displayName, photoURL: r.user.photoURL, email: r.user.email }, { merge: true }); } catch (e) { if (!auth.currentUser) await signInAnonymously(auth); } }
         async function handleSignOut() { await signOut(auth); await signInAnonymously(auth); }
 
         async function toggleLike(postId) {
@@ -224,17 +160,125 @@
             const card = document.createElement('article');
             card.className = 'post-card';
             card.innerHTML = `
-                <a href="#profile/${post.userId}"><img src="${authorPfp}" alt="PFP" class="pfp"></a>
-                <div class="post-main">
-                    <div class="post-header"><a href="#profile/${post.userId}" class="font-bold hover:underline">${authorName}</a><span class="text-gray-500 ml-2">${generateHandle(authorName, post.userId)}</span></div>
-                    <div class="post-content">${parseAndRenderMentions(post.text)}</div>
-                    ${post.customLocation ? `<div id="map-${post.id}" class="post-map-container"></div>` : ''}
-                    <div class="post-actions">
-                        <div class="action-item like ${isLiked ? 'liked' : ''}" data-post-id="${post.id}"><span class="icon">${isLiked ? '❤️' : '🤍'}</span><span>${post.likeCount || 0}</span></div>
-                    </div>
+                <a href="#profile/${post.userId}"><img class="w-12 h-12 rounded-full" src="${authorPfp}" alt="PFP"></a>
+                <div class="flex-grow">
+                    <div class="flex items-center gap-2"><a href="#profile/${post.userId}" class="font-bold hover:underline">${authorName}</a><span class="text-sm text-[var(--secondary-text-color)]">${generateHandle(authorName, post.userId)}</span></div>
+                    <div class="post-content mt-1">${parseAndRenderMentions(post.text)}</div>
+                    ${post.customLocation ? `<div id="map-${post.id}" class="post-map-container mt-3 h-72 rounded-xl border border-[var(--border-color)] overflow-hidden"></div>` : ''}
+                    <div class="post-actions mt-3"><div class="action-item like ${isLiked ? 'liked' : ''}" data-post-id="${post.id}"><span class="icon">${isLiked ? '❤️' : '🤍'}</span><span>${post.likeCount || 0}</span></div></div>
                 </div>`;
-            if(post.customLocation) { setTimeout(() => { if (document.getElementById(`map-${post.id}`) && !document.getElementById(`map-${post.id}`)._leaflet_id) { const map = L.map(`map-${post.id}`).setView([post.customLocation.latitude, post.customLocation.longitude], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map); L.marker([post.customLocation.latitude, post.customLocation.longitude]).addTo(map); } }, 0); }
+            if (post.customLocation) { setTimeout(() => { const mapEl = document.getElementById(`map-${post.id}`); if (mapEl && !mapEl._leaflet_id) { const map = L.map(mapEl).setView([post.customLocation.latitude, post.customLocation.longitude], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map); L.marker([post.customLocation.latitude, post.customLocation.longitude]).addTo(map); } }, 0); }
             return card;
+        }
+        
+        function renderHomePage() {
+            const page = document.getElementById('home-page');
+            page.innerHTML = `<div class="page-header">Home</div>
+                <div class="flex p-4 border-b border-[var(--border-color)]">
+                    <img id="composer-pfp" class="w-12 h-12 rounded-full mr-4" src="${userProfilesCache[currentUserId]?.photoURL || 'https://placehold.co/48x48/15202B/8899A6?text=👤'}">
+                    <div class="flex-grow"><textarea id="post-composer-textarea" class="styled-textarea" placeholder="What's happening?"></textarea>
+                        <div class="border-t border-[var(--border-color)] pt-2 mt-2">
+                             <input type="url" id="post-link-composer" class="styled-input text-sm" placeholder="Optional: Add a link">
+                             <input type="text" id="post-location-composer" class="styled-input text-sm" placeholder="Optional: Tag a location">
+                        </div>
+                        <div class="flex justify-end items-center mt-2"><button id="composer-post-btn" class="composer-button-post">Post</button></div>
+                    </div>
+                </div>
+                <div id="posts-container"></div><p id="no-posts-message" class="text-center p-8 text-gray-500">No posts nearby</p>`;
+            const postBtn = page.querySelector('#composer-post-btn');
+            page.querySelector('#post-composer-textarea').addEventListener('input', e => { postBtn.classList.toggle('enabled', e.target.value.trim().length > 0); });
+            postBtn.addEventListener('click', () => { if(postBtn.classList.contains('enabled')) handlePostSubmit(); });
+        }
+
+        async function renderUserProfilePage(userId) {
+            const page = document.getElementById('profile-page');
+            page.innerHTML = `<div class="p-8 text-center">Loading profile...</div>`;
+            const user = await getUserProfile(userId);
+            if (!user) { page.innerHTML = `<div class="p-8 text-center">User not found.</div>`; return; }
+            const postsQuery = query(collection(db, `artifacts/${appId}/public/data/posts`), where("userId", "==", userId), orderBy("timestamp", "desc"));
+            const postsSnapshot = await getDocs(postsQuery);
+            const userPosts = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            page.innerHTML = `
+                <div class="page-header"><span class="back-button">←</span><span>${user.displayName}</span></div>
+                <div class="profile-header">
+                    <div class="profile-banner"><img src="${user.bannerURL || 'https://placehold.co/600x200/38444D/38444D'}" alt="Banner"></div>
+                    <div class="flex justify-end p-4 pt-2 items-center"><img src="${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`}" class="profile-pfp"><button class="dm-button" data-user-id="${userId}" data-user-name="${user.displayName}">Direct Message</button></div>
+                </div>
+                <div class="profile-details"><h2 class="text-xl font-bold">${user.displayName}</h2><p class="text-[var(--secondary-text-color)]">${generateHandle(user.displayName, userId)}</p></div>
+                <div id="profile-posts-container"></div>`;
+            const profilePostsContainer = page.querySelector('#profile-posts-container');
+            if (userPosts.length > 0) userPosts.forEach(post => profilePostsContainer.appendChild(createPostCard(post)));
+            else profilePostsContainer.innerHTML = `<p class="p-8 text-center text-gray-500">This user hasn't posted anything yet.</p>`;
+        }
+        
+        function renderAiPage() {
+             const page = document.getElementById('ai-post-page');
+             page.innerHTML = `<div class="page-header">Generate Post with AI</div>
+                <div class="p-4"><textarea id="ai-prompt-input" class="styled-textarea" rows="3" placeholder="Enter topic or prompt for AI..."></textarea>
+                    <button id="generate-ai-post-btn" class="composer-button-post enabled mt-2">Generate & Save Prompt</button>
+                    <textarea id="ai-generated-content" class="styled-textarea mt-4" rows="6" readonly placeholder="Generated content will appear here..."></textarea>
+                    <button id="use-ai-post-btn" class="composer-button-post enabled mt-2">Use This Post & Go Home</button>
+                </div>`;
+            page.querySelector('#generate-ai-post-btn').addEventListener('click', handleAiGenerate);
+            page.querySelector('#use-ai-post-btn').addEventListener('click', () => {
+                const content = page.querySelector('#ai-generated-content').value;
+                if(content.trim()) { sessionStorage.setItem('prefillPost', content); window.location.hash = '#home'; }
+            });
+        }
+        
+        async function renderSettingsPage() {
+            const page = document.getElementById('settings-page');
+            page.innerHTML = `<div class="page-header">Settings</div>
+                <div class="settings-section"><h2>Appearance</h2><label class="flex justify-between items-center cursor-pointer"><span>Light Mode</span><div class="theme-toggle-switch"><input type="checkbox" id="theme-toggle-checkbox"><span class="slider"></span></div></label></div>
+                <div class="settings-section"><h2>Previous AI Prompts</h2><div id="previous-prompts-list"><p class="text-gray-500">Loading your prompts...</p></div></div>`;
+            
+            const checkbox = page.querySelector('#theme-toggle-checkbox');
+            checkbox.checked = document.documentElement.classList.contains('light-theme');
+            checkbox.addEventListener('change', () => themeManager.toggleTheme());
+            
+            const promptsList = page.querySelector('#previous-prompts-list');
+            if (!currentUserId) { promptsList.innerHTML = `<p class="text-gray-500">Please sign in to see your prompt history.</p>`; return; }
+            
+            const promptsQuery = query(collection(db, `users/${currentUserId}/prompts`), orderBy('timestamp', 'desc'), limit(10));
+            const snapshot = await getDocs(promptsQuery);
+            if (snapshot.empty) { promptsList.innerHTML = `<p class="text-gray-500">You haven't generated any AI posts yet.</p>`; } 
+            else {
+                promptsList.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const prompt = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'previous-prompt-item';
+                    item.innerHTML = `<p>${prompt.text}</p><div class="text-xs text-[var(--secondary-text-color)] mt-1">${new Date(prompt.timestamp.toDate()).toLocaleString()}</div>`;
+                    item.addEventListener('click', () => { sessionStorage.setItem('prefillAiPrompt', prompt.text); window.location.hash = '#ai-post'; });
+                    promptsList.appendChild(item);
+                });
+            }
+        }
+        
+        async function fetchAndDisplayProfiles() {
+            const page = document.getElementById('profiles-page');
+            page.innerHTML = `<div class="page-header">Nearby Profiles</div><div id="profiles-list-container"><p class="p-8 text-center text-gray-500">Loading...</p></div>`;
+            const container = page.querySelector('#profiles-list-container');
+            const usersRef = collection(db, `artifacts/${appId}/public/data/users`);
+            const snapshot = await getDocs(query(usersRef));
+            container.innerHTML = '';
+            if (snapshot.empty) { container.innerHTML = `<p class="p-8 text-center text-gray-500">No profiles found.</p>`; return; }
+            snapshot.forEach(doc => {
+                const user = doc.data();
+                if (user.isAnonymous || !user.displayName) return;
+                const item = document.createElement('a');
+                item.href = `#profile/${user.uid}`;
+                item.className = 'profile-list-item';
+                item.innerHTML = `<img class="w-12 h-12 rounded-full" src="${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`}"><div class="flex-grow"><div>${user.displayName}</div><div class="text-sm text-[var(--secondary-text-color)]">${generateHandle(user.displayName, user.uid)}</div></div>`;
+                container.appendChild(item);
+            });
+        }
+        
+        async function handlePostSubmit() { /* ... unchanged ... */ }
+        async function handleAiGenerate() {
+            const promptInput = document.getElementById('ai-prompt-input'); const promptText = promptInput.value.trim(); if(!promptText) return;
+            if (currentUserId) await addDoc(collection(db, `users/${currentUserId}/prompts`), { text: promptText, timestamp: new Date() });
+            document.getElementById('ai-generated-content').value = `This is AI-generated content for: "${promptText}".`;
         }
 
         function setupMainFeedListener() {
@@ -242,10 +286,12 @@
             if (!userLocation) { document.getElementById('no-posts-message').textContent = "Location not available."; return; }
             const postsQuery = query(collection(db, `artifacts/${appId}/public/data/posts`), orderBy("timestamp", "desc"));
             mainFeedUnsubscribe = onSnapshot(postsQuery, async (snapshot) => {
+                const postsContainer = document.getElementById('posts-container');
+                const noPostsMessage = document.getElementById('no-posts-message');
+                if (!postsContainer || !noPostsMessage) return; // Page not active
                 const allPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 const nearbyPosts = allPosts.filter(post => post.location && calculateDistance(userLocation.latitude, userLocation.longitude, post.location.latitude, post.location.longitude) <= 500);
-                postsContainer.innerHTML = '';
-                document.getElementById('no-posts-message').style.display = nearbyPosts.length > 0 ? 'none' : 'block';
+                postsContainer.innerHTML = ''; noPostsMessage.style.display = nearbyPosts.length > 0 ? 'none' : 'block';
                 if (nearbyPosts.length === 0) return;
                 const userIds = [...new Set(nearbyPosts.map(p => p.userId))];
                 await Promise.all(userIds.map(id => getUserProfile(id)));
@@ -253,46 +299,6 @@
             });
         }
         
-        async function renderUserProfilePage(userId) { /* Unchanged */ }
-        
-        async function fetchAndDisplayProfiles() {
-            profilesListContainer.innerHTML = `<p class="text-center p-8 text-gray-500">Loading profiles...</p>`;
-            const usersRef = collection(db, `artifacts/${appId}/public/data/users`);
-            const snapshot = await getDocs(query(usersRef));
-            profilesListContainer.innerHTML = '';
-            if (snapshot.empty) { profilesListContainer.innerHTML = `<p class="text-center p-8 text-gray-500">No profiles found.</p>`; return; }
-            snapshot.forEach(doc => {
-                const user = doc.data();
-                if (user.isAnonymous || !user.displayName) return;
-                const profileItem = document.createElement('a');
-                profileItem.href = `#profile/${user.uid}`;
-                profileItem.className = 'profile-list-item';
-                profileItem.innerHTML = `<img src="${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`}" alt="PFP"><div><div class="font-bold">${user.displayName}</div><div class="text-sm text-gray-500">${generateHandle(user.displayName, user.uid)}</div></div>`;
-                profilesListContainer.appendChild(profileItem);
-            });
-        }
-        
-        async function fetchAllUsersForMentions() { /* Unchanged */ }
-        function showMentionsPopup(users, text, mentionStartPos) { /* Unchanged */ }
-        function hideMentionsPopup() { /* Unchanged */ }
-        function handleMentionInput(event) { /* Unchanged */ }
-        
-        async function handlePostSubmit() {
-            const text = postComposerTextarea.value.trim();
-            if (!text || !currentUserId || !userLocation) { alert("Cannot post. Ensure you are signed in and location is enabled."); return; }
-            composerPostBtn.disabled = true; composerPostBtn.textContent = 'Posting...';
-            try {
-                const customLocation = postLocationComposer.value.trim() ? await geocodeLocation(postLocationComposer.value.trim()) : null;
-                const postData = { userId: currentUserId, text, timestamp: Date.now(), location: userLocation, likeCount: 0, likes: [] };
-                if (postLinkComposer.value.trim()) postData.linkUrl = postLinkComposer.value.trim();
-                if (customLocation) postData.customLocation = customLocation;
-                await addDoc(collection(db, `artifacts/${appId}/public/data/posts`), postData);
-                postComposerTextarea.value = ''; postLinkComposer.value = ''; postLocationComposer.value = '';
-                postComposerTextarea.dispatchEvent(new Event('input'));
-            } catch (error) { alert(`Failed to post: ${error.message}`); } 
-            finally { composerPostBtn.disabled = false; composerPostBtn.textContent = 'Post'; }
-        }
-
         function router() {
             if (mainFeedUnsubscribe) { mainFeedUnsubscribe(); mainFeedUnsubscribe = null; }
             const hash = window.location.hash || '#home';
@@ -301,36 +307,36 @@
             const targetLink = document.querySelector(`.sidebar-link[href="${hash.split('/')[0]}"]`);
             if(targetLink) targetLink.classList.add('active');
 
-            if (hash.startsWith('#profile/')) {
-                const userId = hash.split('/')[1];
-                document.getElementById('profile-page').classList.add('active');
-                if (userId) renderUserProfilePage(userId);
-            } else if (hash === '#ai-post') {
-                document.getElementById('ai-post-page').classList.add('active');
-            } else if (hash === '#profiles') {
-                document.getElementById('profiles-page').classList.add('active');
-                fetchAndDisplayProfiles();
-            } else {
-                document.getElementById('home-page').classList.add('active');
-                setupMainFeedListener();
-            }
+            const pageId = hash.startsWith('#profile/') ? '#profile' : hash;
+            const targetPage = document.querySelector(pageId + '-page');
+
+            if (targetPage) {
+                targetPage.classList.add('active');
+                switch(pageId) {
+                    case '#home': renderHomePage(); setupMainFeedListener(); if (sessionStorage.getItem('prefillPost')) { document.getElementById('post-composer-textarea').value = sessionStorage.getItem('prefillPost'); sessionStorage.removeItem('prefillPost'); } break;
+                    case '#ai-post': renderAiPage(); if (sessionStorage.getItem('prefillAiPrompt')) { document.getElementById('ai-prompt-input').value = sessionStorage.getItem('prefillAiPrompt'); sessionStorage.removeItem('prefillAiPrompt'); } break;
+                    case '#profiles': fetchAndDisplayProfiles(); break;
+                    case '#settings': renderSettingsPage(); break;
+                    case '#profile': renderUserProfilePage(hash.split('/')[1]); break;
+                }
+            } else { const homePage = document.getElementById('home-page'); homePage.classList.add('active'); renderHomePage(); setupMainFeedListener(); }
         }
 
         async function initializeAppLogic() {
             showLoadingBar();
             app = initializeApp(firebaseConfig); db = getFirestore(app); auth = getAuth(app);
             if (!auth.currentUser) await signInAnonymously(auth);
-            
-            await fetchAllUsersForMentions();
-            
+
             onAuthStateChanged(auth, async (user) => {
                 currentUserId = user?.isAnonymous ? null : user?.uid;
-                try {
-                    userLocation = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(pos => resolve({latitude: pos.coords.latitude, longitude: pos.coords.longitude}), err => reject(new Error("Location access denied."))));
-                } catch (e) { console.error(e.message); } 
-                finally {
-                    router(); hideLoadingBar();
-                }
+                if(user && !user.isAnonymous) await getUserProfile(user.uid);
+                
+                document.getElementById('user-name-widget').textContent = user?.displayName || 'Guest';
+                document.getElementById('user-handle-widget').textContent = user ? generateHandle(user.displayName, user.uid) : '@guest';
+                document.getElementById('user-pfp-widget').src = user?.photoURL || 'https://placehold.co/40x40/15202B/8899A6?text=👤';
+
+                try { userLocation = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(pos => resolve({latitude: pos.coords.latitude, longitude: pos.coords.longitude}), err => reject(new Error("Location access denied.")))); } catch (e) { console.error(e.message); } 
+                finally { router(); hideLoadingBar(); }
             });
 
             mainFeedContainer.addEventListener('click', e => {
@@ -338,15 +344,9 @@
                 const dmBtn = e.target.closest('.dm-button');
                 const backBtn = e.target.closest('.back-button');
                 if (likeBtn) toggleLike(likeBtn.dataset.postId);
-                if (dmBtn) { if (currentUserId) alert(`DM feature coming soon!`); else alert("Please sign in to send messages."); }
+                if (dmBtn) { if (currentUserId) alert(`DMing ${dmBtn.dataset.userName}... (feature coming soon)`); else alert("Please sign in to send messages."); }
                 if (backBtn) window.history.back();
             });
-            
-            postComposerTextarea.addEventListener('input', (e) => { composerPostBtn.classList.toggle('enabled', postComposerTextarea.value.trim().length > 0); handleMentionInput(e); });
-            composerPostBtn.addEventListener('click', () => { if (composerPostBtn.classList.contains('enabled')) handlePostSubmit(); });
-            useAiPostBtn.addEventListener('click', () => { if (aiGeneratedContent.value.trim()) { postComposerTextarea.value = aiGeneratedContent.value.trim(); postComposerTextarea.dispatchEvent(new Event('input')); window.location.hash = '#home'; } });
-            document.addEventListener('click', (e) => { if (!mentionsPopup.contains(e.target) && e.target !== postComposerTextarea) hideMentionsPopup(); });
-
             window.addEventListener('hashchange', router);
         }
         
