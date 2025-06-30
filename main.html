@@ -11,7 +11,7 @@
 
     <style>
         :root { /* Dark Theme (Default) */
-            --background-color: #15202B;
+            --background-color: #1b2c3d;
             --primary-text-color: #F7F9F9;
             --secondary-text-color: #8899A6;
             --accent-color: #1D9BF0;
@@ -104,7 +104,7 @@
             <div>
                 <a href="#home" class="sidebar-link">🏠<span>Home</span></a>
                 <a href="#profiles" class="sidebar-link">🌐<span>Nearby Profiles</span></a>
-                <a href="#settings" class="sidebar-link">⚙️<span>Settings</span></a>
+                <a href="#settings" class="sidebar-link">⚙️<span>Preferences</span></a>
             </div>
 
             <div class="mt-auto">
@@ -325,7 +325,7 @@
         
         async function renderSettingsPage() {
             const page = document.getElementById('settings-page');
-            page.innerHTML = `<div class="page-header">Settings</div>
+            page.innerHTML = `<div class="page-header">Preferences</div>
                 <div class="settings-section"><h2>Appearance</h2><label class="flex justify-between items-center cursor-pointer"><span>Light Mode</span><div class="theme-toggle-switch"><input type="checkbox" id="theme-toggle-checkbox"><span class="slider"></span></div></label></div>`;
             const checkbox = page.querySelector('#theme-toggle-checkbox');
             checkbox.checked = document.documentElement.classList.contains('light-theme');
@@ -462,9 +462,9 @@
                 
                 if(user && !isGuest) await getUserProfile(user.uid);
                 
-                document.getElementById('user-name-widget').textContent = user?.displayName || 'Guest';
+                document.getElementById('user-name-widget').textContent = user?.displayName || 'Not Signed In';
                 document.getElementById('user-handle-widget').textContent = generateHandle(user?.displayName, user?.uid);
-                document.getElementById('user-pfp-widget').src = user?.photoURL || 'https://placehold.co/40x40/15202B/8899A6?text=👤';
+                document.getElementById('user-pfp-widget').src = user?.photoURL || 'https://placehold.co/40x40/15202B/8899A6?text=Anon';
 
                 try { userLocation = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(pos => resolve({latitude: pos.coords.latitude, longitude: pos.coords.longitude}), err => reject(new Error("Location access denied.")))); } catch (e) { console.error(e.message); } 
                 finally { router(); hideLoadingBar(); }
