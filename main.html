@@ -844,22 +844,21 @@
 
         async function showLocalNotification(post) {
             if (Notification.permission !== 'granted' || !('serviceWorker' in navigator)) {
-                return; // Don't show if permission not granted or SW not supported
+                return; 
             }
 
             try {
                 const authorProfile = await getUserProfile(post.userId);
                 const title = `New post from ${authorProfile.displayName || 'a user'}!`;
                 const body = post.text.length > 100 ? post.text.substring(0, 97) + '...' : post.text;
-                const icon = authorProfile.photoURL || 'https://placehold.co/192x192/cccccc/333333?text=🔔'; // Use profile pic as icon
-                const url = window.location.href; // URL to open on click
+                const icon = authorProfile.photoURL || 'https://placehold.co/192x192/cccccc/333333?text=🔔';
 
                 const registration = await navigator.serviceWorker.ready;
                 registration.showNotification(title, {
                     body: body,
                     icon: icon,
                     badge: icon,
-                    data: { url: url } // Pass URL to the click handler in the service worker
+                    data: { url: url }
                 });
                 console.log("Local notification shown for post:", post.id);
             } catch (error) {
