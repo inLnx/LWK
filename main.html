@@ -129,11 +129,28 @@
         import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs, doc, setDoc, getDoc, runTransaction, increment, arrayUnion, arrayRemove, where, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "AIzaSyAE37qdlDBYSUhumSO6jTA985V81DN9iA8", authDomain: "lowk-be8e0.firebaseapp.com", projectId: "lowk-be8e0", storageBucket: "lowk-be8e0.firebasestorage.app", messagingSenderId: "244867743683", appId: "1:244867743683:web:1b11ac7b94462ef5314776" };
+        // --- CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAE37qdlDBYSUhumSO6jTA985V81DN9iA8",
+            authDomain: "lowk-be8e0.firebaseapp.com",
+            projectId: "lowk-be8e0",
+            storageBucket: "lowk-be8e0.firebasestorage.app",
+            messagingSenderId: "244867743683",
+            appId: "1:244867743683:web:1b11ac7b94462ef5314776"
+        };
+        
+        // <!-- ======================================================= -->
+        // <!--           YOUR GEMINI API KEY GOES HERE                 -->
+        // <!-- ======================================================= -->
+        const geminiApiKey = "PASTE_YOUR_GEMINI_API_KEY_HERE";
+        // <!-- ======================================================= -->
+        // <!-- ======================================================= -->
+
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         let app, db, auth, currentUserId = null, userLocation = null, mainFeedUnsubscribe = null;
         const userProfilesCache = {};
-        const VISIBILITY_RADIUS_METERS = 8047;
+        const VISIBILITY_RADIUS_METERS = 8047; // Approx. 5 miles
 
         const themeManager = {
             init() { this.applyTheme(localStorage.getItem('theme') || 'dark'); },
@@ -317,9 +334,47 @@
         }
 
         async function handleAiGenerate() {
-            const promptInput = document.getElementById('ai-prompt-input'); const promptText = promptInput.value.trim(); if(!promptText) return;
-            if (currentUserId) await addDoc(collection(db, `users/${currentUserId}/prompts`), { text: promptText, timestamp: new Date() });
-            document.getElementById('ai-generated-content').value = `This is AI-generated content for: "${promptText}".`;
+            const promptInput = document.getElementById('ai-prompt-input');
+            const generateBtn = document.getElementById('generate-ai-post-btn');
+            const outputArea = document.getElementById('ai-generated-content');
+            const promptText = promptInput.value.trim();
+            if (!promptText) return;
+
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generating...';
+            outputArea.value = 'Thinking...';
+
+            try {
+                if (currentUserId) {
+                    await addDoc(collection(db, `users/${currentUserId}/prompts`), { text: promptText, timestamp: new Date() });
+                }
+                
+                const fullPrompt = `Write a short, engaging social media post (around 50 words) about: '${promptText}'. Do not include hashtags.`;
+                const payload = { contents: [{ role: "user", parts: [{ text: fullPrompt }] }] };
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Error: ${errorData.error.message || response.statusText}`);
+                }
+                
+                const result = await response.json();
+                const generatedText = result.candidates[0].content.parts[0].text.trim();
+                outputArea.value = generatedText;
+
+            } catch(error) {
+                console.error("AI Generation Error:", error);
+                outputArea.value = `Error generating content: ${error.message}`;
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate & Save Prompt';
+            }
         }
 
         function setupMainFeedListener() {
