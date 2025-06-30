@@ -40,7 +40,21 @@
         .sidebar-link { display: flex; align-items: center; gap: 20px; padding: 12px; border-radius: 9999px; cursor: pointer; transition: background-color 0.2s ease; font-size: 20px; font-weight: 500; color: var(--secondary-text-color); text-decoration: none; }
         .sidebar-link:hover { background-color: var(--hover-background); color: var(--primary-text-color); }
         .sidebar-link.active { font-weight: 700; color: var(--primary-text-color); }
-        .user-profile-widget { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 9999px; cursor: pointer; transition: background-color 0.2s; }
+        
+        #sign-in-btn {
+            background-color: var(--accent-color);
+            color: white;
+            font-size: 17px;
+            font-weight: 700;
+            border-radius: 9999px;
+            padding: 15px 0;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        #sign-in-btn:hover { background-color: #1A8CD8; }
+
+        .user-profile-widget { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 9999px; cursor: pointer; transition: background-color 0.2s; }
         
         .main-feed { width: 600px; min-height: 100vh; border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         .page-container { display: none; }
@@ -83,13 +97,19 @@
 
     <div class="main-app-container">
         <nav class="left-sidebar">
-            <a href="#home" class="sidebar-link">🏠<span>Home</span></a>
-            <a href="#ai-post" class="sidebar-link">✨<span>AI Post</span></a>
-            <a href="#profiles" class="sidebar-link">🌐<span>Nearby Profiles</span></a>
-            <a href="#settings" class="sidebar-link">⚙️<span>Settings</span></a>
-            <div id="user-profile-widget" class="user-profile-widget">
-                <img id="user-pfp-widget" class="w-10 h-10 rounded-full" src="https://placehold.co/40x40/15202B/8899A6?text=👤" alt="PFP">
-                <div class="flex flex-col"><span id="user-name-widget" class="font-bold">Guest</span><span id="user-handle-widget" class="text-sm text-gray-500">@guest</span></div>
+            <div>
+                <a href="#home" class="sidebar-link">🏠<span>Home</span></a>
+                <a href="#ai-post" class="sidebar-link">✨<span>AI Post</span></a>
+                <a href="#profiles" class="sidebar-link">🌐<span>Nearby Profiles</span></a>
+                <a href="#settings" class="sidebar-link">⚙️<span>Settings</span></a>
+            </div>
+
+            <div class="mt-auto">
+                <div id="sign-in-btn" class="hidden mx-2">Sign In with Google</div>
+                <div id="user-profile-widget" class="user-profile-widget">
+                    <img id="user-pfp-widget" class="w-10 h-10 rounded-full" src="https://placehold.co/40x40/15202B/8899A6?text=👤" alt="PFP">
+                    <div class="flex flex-col"><span id="user-name-widget" class="font-bold">Guest</span><span id="user-handle-widget" class="text-sm text-gray-500">@guest</span></div>
+                </div>
             </div>
         </nav>
 
@@ -113,7 +133,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         let app, db, auth, currentUserId = null, userLocation = null, mainFeedUnsubscribe = null;
         const userProfilesCache = {};
-        const VISIBILITY_RADIUS_METERS = 8047; // Approx. 5 miles
+        const VISIBILITY_RADIUS_METERS = 8047;
 
         const themeManager = {
             init() { this.applyTheme(localStorage.getItem('theme') || 'dark'); },
@@ -133,6 +153,9 @@
         const hideLoadingBar = () => { loadingBar.style.width = '100%'; setTimeout(() => { loadingBar.style.opacity = '0'; }, 500); };
         
         const mainFeedContainer = document.getElementById('main-feed-container');
+        const userProfileWidget = document.getElementById('user-profile-widget');
+        const signInBtn = document.getElementById('sign-in-btn');
+
         const generateHandle = (displayName, uid) => uid ? `@${(displayName || 'user').toLowerCase().replace(/\s+/g, '')}_${uid.substring(0,4)}` : '@guest';
         const parseAndRenderMentions = (text) => text ? text.replace(/@\w+_\w{4}/g, match => `<a href="#" class="mention">${match}</a>`).replace(/\n/g, '<br>') : '';
         const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI / 180; const φ2 = lat2 * Math.PI / 180; const Δφ = (lat2 - lat1) * Math.PI / 180; const Δλ = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); return R * c; };
@@ -348,17 +371,30 @@
             if (!auth.currentUser) await signInAnonymously(auth);
 
             onAuthStateChanged(auth, async (user) => {
-                currentUserId = user?.isAnonymous ? null : user?.uid;
-                if(user && !user.isAnonymous) await getUserProfile(user.uid);
+                const isGuest = !user || user.isAnonymous;
+                currentUserId = isGuest ? null : user.uid;
+
+                if (isGuest) {
+                    signInBtn.classList.remove('hidden');
+                    userProfileWidget.style.cursor = 'default';
+                    userProfileWidget.onclick = null;
+                } else {
+                    signInBtn.classList.add('hidden');
+                    userProfileWidget.style.cursor = 'pointer';
+                    userProfileWidget.onclick = handleSignOut;
+                }
+                
+                if(user && !isGuest) await getUserProfile(user.uid);
                 
                 document.getElementById('user-name-widget').textContent = user?.displayName || 'Guest';
-                document.getElementById('user-handle-widget').textContent = user ? generateHandle(user.displayName, user.uid) : '@guest';
+                document.getElementById('user-handle-widget').textContent = generateHandle(user?.displayName, user?.uid);
                 document.getElementById('user-pfp-widget').src = user?.photoURL || 'https://placehold.co/40x40/15202B/8899A6?text=👤';
 
                 try { userLocation = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(pos => resolve({latitude: pos.coords.latitude, longitude: pos.coords.longitude}), err => reject(new Error("Location access denied.")))); } catch (e) { console.error(e.message); } 
                 finally { router(); hideLoadingBar(); }
             });
 
+            signInBtn.addEventListener('click', handleGoogleSignIn);
             mainFeedContainer.addEventListener('click', e => {
                 const likeBtn = e.target.closest('.action-item.like');
                 const dmBtn = e.target.closest('.dm-button');
