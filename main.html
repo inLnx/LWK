@@ -10,7 +10,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <!--This wont run locally-->
     <style>
-        :root { /* Dark Theme (Default) */
+        :root { /* Default Theme */
             --background-color: #091017;
             --primary-text-color: #F7F9F9;
             --secondary-text-color: #8899A6;
@@ -109,7 +109,7 @@
             </div>
 
             <div class="mt-auto">
-                <div id="sign-in-btn" class="hidden mx-2">Sign In with Google</div>
+                <div id="sign-in-btn" class="hidden mx-2">Google Sign In</div>
                 <div id="user-profile-widget" class="user-profile-widget">
                     <img id="user-pfp-widget" class="w-10 h-10 rounded-full" src="https://placehold.co/40x40/15202B/8899A6?text=👤" alt="PFP">
                     <div class="flex flex-col"><span id="user-name-widget" class="font-bold">Guest</span><span id="user-handle-widget" class="text-sm text-gray-500">@guest</span></div>
@@ -241,10 +241,10 @@
                 <div class="flex p-4 border-b border-[var(--border-color)]">
                     <img id="composer-pfp" class="w-12 h-12 rounded-full mr-4" src="${userProfilesCache[currentUserId]?.photoURL || 'https://placehold.co/48x48/15202B/8899A6?text=>'}">
                     <div class="flex-grow">
-                        <textarea id="post-composer-textarea" class="styled-textarea" placeholder="What's happening?"></textarea>
+                        <textarea id="post-composer-textarea" class="styled-textarea" placeholder="wassup?"></textarea>
                         <div class="border-t border-[var(--border-color)] pt-2 mt-2">
-                             <input type="url" id="post-link-composer" class="styled-input text-sm" placeholder="Optional: Add a link">
-                             <input type="text" id="post-location-composer" class="styled-input text-sm" placeholder="Optional: Tag a location">
+                             <input type="url" id="post-link-composer" class="styled-input text-sm" placeholder="Enter Link Here">
+                             <input type="text" id="post-location-composer" class="styled-input text-sm" placeholder="Add Location Here">
                         </div>
                         <div class="flex justify-end items-center mt-2"><button id="composer-post-btn" class="composer-button-post">Post</button></div>
                     </div>
@@ -465,7 +465,7 @@
                 
                 document.getElementById('user-name-widget').textContent = user?.displayName || 'Not Signed In';
                 document.getElementById('user-handle-widget').textContent = generateHandle(user?.displayName, user?.uid);
-                document.getElementById('user-pfp-widget').src = user?.photoURL || 'https://placehold.co/40x40/15202B/8899A6?text=Anon';
+                document.getElementById('user-pfp-widget').src = user?.photoURL || 'https://placehold.co/40x40/15202B/8899A6?text=?';
 
                 try { userLocation = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(pos => resolve({latitude: pos.coords.latitude, longitude: pos.coords.longitude}), err => reject(new Error("Location access denied.")))); } catch (e) { console.error(e.message); } 
                 finally { router(); hideLoadingBar(); }
