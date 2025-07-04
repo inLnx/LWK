@@ -8,13 +8,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-
+<!--This wont run locally-->
     <style>
         :root { /* Dark Theme (Default) */
-            --background-color: #1b2c3d;
+            --background-color: #091017;
             --primary-text-color: #F7F9F9;
             --secondary-text-color: #8899A6;
-            --accent-color: #1D9BF0;
+            --accent-color: #c0760f;
             --border-color: #38444D;
             --container-background: #192734;
             --hover-background: rgba(29, 155, 240, 0.1);
@@ -26,6 +26,7 @@
             --secondary-text-color: #536471;
             --border-color: #EFF3F4;
             --container-background: #F7F9F9;
+            --accent-color: #29251e;
         }
         
         html, body {
@@ -75,7 +76,7 @@
         .profile-details { padding: 85px 16px 16px 16px; border-bottom: 1px solid var(--border-color); }
         .dm-button { background: none; border: 1px solid var(--primary-text-color); color: var(--primary-text-color); padding: 8px 16px; border-radius: 9999px; font-weight: 700; cursor: pointer; }
         
-        .post-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        .post-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px inset var(--border-color); cursor: pointer; }
         .post-card:hover { background-color: var(--hover-background); }
         .post-actions { display: flex; align-items: center; gap: 16px; }
         .action-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--secondary-text-color); }
