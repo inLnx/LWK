@@ -3,7 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local Social Feed</title>
+    <meta name="description" content="LWK is a location-based social app for sharing posts and connecting with nearby profiles.">
+    <meta name="keywords" content="social, location, posts, profiles, community, map, nearby, chat">
+    <meta name="author" content="Scutoid">
+    <meta property="og:title" content="LWK - Location-Based Social App">
+    <meta property="og:description" content="Share posts, connect with people nearby, and explore your local community.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://inlnx.github.io/LWK ">
+    <meta property="og:image" content="https://placehold.co/600x200/38444D/38444D">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="LWK - Location-Based Social App">
+    <meta name="twitter:description" content="Share posts, connect with people nearby, and explore your local community.">
+    <meta name="twitter:image" content="https://placehold.co/600x200/38444D/38444D">
+    <title>LWK</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -21,12 +33,12 @@
             --like-color: #F91880;
         }
         html.light-theme { /* Light Theme */
-            --background-color: #FFFFFF;
+            --background-color: #cfc0f6;
             --primary-text-color: #0F1419;
             --secondary-text-color: #536471;
             --border-color: #EFF3F4;
-            --container-background: #F7F9F9;
-            --accent-color: #29251e;
+            --container-background: #9e9ef8;
+            --accent-color: hsl(250, 76%, 73%);
         }
         
         html, body {
@@ -132,7 +144,6 @@
         import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs, doc, setDoc, getDoc, runTransaction, increment, arrayUnion, arrayRemove, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyAE37qdlDBYSUhumSO6jTA985V81DN9iA8",
             authDomain: "lowk-be8e0.firebaseapp.com",
@@ -168,7 +179,7 @@
         const mainFeedContainer = document.getElementById('main-feed-container');
         const userProfileWidget = document.getElementById('user-profile-widget');
         const signInBtn = document.getElementById('sign-in-btn');
-
+// Had to remove it for ship
         const generateHandle = (displayName, uid) => uid ? `@${(displayName || 'user').toLowerCase().replace(/\s+/g, '')}_${uid.substring(0,4)}` : '@guest';
         const parseAndRenderMentions = (text) => text ? text.replace(/@\w+_\w{4}/g, match => `<a href="#" class="mention">${match}</a>`).replace(/\n/g, '<br>') : '';
         const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI / 180; const φ2 = lat2 * Math.PI / 180; const Δφ = (lat2 - lat1) * Math.PI / 180; const Δλ = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); return R * c; };
@@ -221,7 +232,7 @@
             const authorPfp = authorProfile.photoURL || `https://ui-avatars.com/api/?name=${authorName}`;
             
             const card = document.createElement('article');
-            card.className = 'post-card reply-card'; // Reuse post-card styling but make it non-interactive
+            card.className = 'post-card reply-card'; 
             card.innerHTML = `
                 <a href="#profile/${reply.userId}"><img class="w-10 h-10 rounded-full" src="${authorPfp}" alt="PFP"></a>
                 <div class="flex-grow">
@@ -240,9 +251,9 @@
                 <div class="flex p-4 border-b border-[var(--border-color)]">
                     <img id="composer-pfp" class="w-12 h-12 rounded-full mr-4" src="${userProfilesCache[currentUserId]?.photoURL || 'https://placehold.co/48x48/15202B/8899A6?text=>'}">
                     <div class="flex-grow">
-                        <textarea id="post-composer-textarea" class="styled-textarea" placeholder="wassup?"></textarea>
+                        <textarea id="post-composer-textarea" class="styled-textarea" placeholder="post maybe?"></textarea>
                         <div class="border-t border-[var(--border-color)] pt-2 mt-2">
-                             <input type="url" id="post-link-composer" class="styled-input text-sm" placeholder="Enter Link Here">
+                             <input type="url" id="post-link-composer" class="styled-input text-sm" placeholder="URL (optional)">
                              <input type="text" id="post-location-composer" class="styled-input text-sm" placeholder="Add Location Here">
                         </div>
                         <div class="flex justify-end items-center mt-2"><button id="composer-post-btn" class="composer-button-post">Post</button></div>
@@ -327,6 +338,7 @@
             const page = document.getElementById('settings-page');
             page.innerHTML = `<div class="page-header">Preferences</div>
                 <div class="settings-section"><h2>Appearance</h2><label class="flex justify-between items-center cursor-pointer"><span>Light Mode</span><div class="theme-toggle-switch"><input type="checkbox" id="theme-toggle-checkbox"><span class="slider"></span></div></label></div>`;
+                               
             const checkbox = page.querySelector('#theme-toggle-checkbox');
             checkbox.checked = document.documentElement.classList.contains('light-theme');
             checkbox.addEventListener('change', () => themeManager.toggleTheme());
@@ -435,7 +447,6 @@
                     case '#home': renderHomePage(); setupMainFeedListener(); break;
                     case '#profiles': fetchAndDisplayProfiles(); break;
                     case '#settings': renderSettingsPage(); break;
-                    case '#profile': renderUserProfilePage(hash.split('/')[1]); break;
                     case '#post': renderPostDetailPage(hash.split('/')[1]); break;
                 }
             } else { const homePage = document.getElementById('home-page'); homePage.classList.add('active'); renderHomePage(); setupMainFeedListener(); }
